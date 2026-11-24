@@ -14,9 +14,14 @@ A cidade cresce de nível para nível e há mais missões ao mesmo tempo.
 2. Avenidas — grelha 3x2 (6 cruzamentos): 4 ambulâncias + 3 elétricos, até 2 em simultâneo.
 3. Hora de ponta — grelha 3x3 (9 cruzamentos): 5 ambulâncias + 4 elétricos, até 3 em simultâneo.
 
-Relógio global: começa em 40 s, cada entrega dá +10 s (o tempo não reinicia). O tempo que sobra passa para o nível seguinte (+10 s). Se chegar a 0, o jogo termina. Penalizações: elétrico sem bateria (−10 s), congestionamento (−8 s).
+Relógio global: começa em 40 s; cada entrega dá até +10 s (+9 no nível 2, +8 no nível 3), menos 1 s por cada 6 s que a missão demorou, com mínimo de 3 s (o tempo não reinicia). O tempo que sobra passa para o nível seguinte (+10 s). Se chegar a 0, o jogo termina. Penalizações: elétrico sem bateria (−10 s), congestionamento (−8 s).
 
 Os mapas (assets/img/mapa1-3.png) e a geometria do hospital e dos postos (assets/data/niveis.json) foram gerados por código.
+
+## Controlos
+- Rato / toque: clicar num dos 4 semáforos de um cruzamento troca o verde; botões do painel; cartões e etiquetas dos postos.
+- Teclado: `A` aceitar sugestão · `I` ignorar · `1`–`4` escolher posto · `Espaço` confirmar posto · `P`/`Esc` pausa · `Enter` no menu começa o jogo.
+- O nível 1 tem um tutorial (seta) nas primeiras jogadas. Top 5 de pontuações com nome, guardado no browser.
 
 ## Conceitos técnicos (apoio à decisão)
 - **Motor de regras SE–ENTÃO com explicação** (`MotorDSS.avaliarSemaforos`): ambulância, fila longa, espera longa.

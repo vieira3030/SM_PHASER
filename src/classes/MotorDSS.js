@@ -8,6 +8,14 @@ import { estimarCarga } from './Dados.js';
 export default class MotorDSS {
 
     // ---------- Conceito 1: motor de regras para semáforos ----------
+    // Para cada cruzamento mede o eixo que está vermelho e aplica três regras SE–ENTÃO:
+    //   R1 (ALTA)  SE uma ambulância se aproxima pelo eixo vermelho e o cruzamento está na sua rota
+    //              ENTÃO dar verde a esse eixo.
+    //   R2 (MÉDIA) SE há 4 ou mais carros parados no eixo vermelho e mais 3 do que no eixo verde
+    //              ENTÃO trocar.
+    //   R3 (BAIXA) SE há carros à espera há mais de 14 s ENTÃO trocar.
+    // Cada regra dá uma pontuação e um MOTIVO (explicação mostrada ao jogador). Fica a sugestão com
+    // maior pontuação entre todos os cruzamentos; o jogador decide se a aceita.
     // Mede a fila (veículos parados), a espera máxima e a ambulância mais próxima de uma aproximação.
     static medir(sem, eixo, veiculos) {
         let fila = 0, esperaMax = 0, amb = null;
@@ -65,8 +73,14 @@ export default class MotorDSS {
     }
 
     // ---------- Conceito 2: pontuação multicritério para postos de carregamento ----------
-    // tempoDe(noDestino) devolve a duração estimada (s de jogo) da viagem do EV até esse posto.
-    // Critérios: tempo total (viagem + espera + carga) e custo da carga, com pesos que dependem da bateria.
+    // tempoDe(posto) devolve a duração da viagem (s de jogo) do EV até esse posto (rota mais curta).
+    // Para cada posto calcula:
+    //   total = viagem + espera na fila + duração da carga   (minutos)
+    //   score = 100 × ( wT × totalMin / total  +  wC × custoMin / custo )
+    // Cada fração vale 1 para o melhor posto nesse critério e menos para os outros (normalização).
+    // Pesos: bateria crítica (< 25 %) => wT = 0.8, wC = 0.2; caso contrário wT = 0.55, wC = 0.45.
+    // Posto que o carro não consegue alcançar com a bateria atual => score × 0.2.
+    // Exemplo para a defesa: mudar os pesos (w) altera o posto recomendado (★).
     static classificarPostos(ev, postos, tempoDe) {
         const dados = postos.map(p => {
             const T = tempoDe(p);

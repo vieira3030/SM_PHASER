@@ -1,6 +1,7 @@
 // Constantes globais do jogo (dimensões, geometria do mapa, velocidades, cores).
 export const LARGURA = 800;
 export const ALTURA = 480;
+export const ESCALA = 2;                // resolução do canvas (2x) para a imagem ficar nítida
 export const MAPA_L = 600;              // largura da área do mapa (o resto é o painel)
 
 export const FAIXA = 14;                // distância do centro da estrada ao centro da faixa

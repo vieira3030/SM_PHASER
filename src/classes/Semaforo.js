@@ -24,7 +24,8 @@ export default class Semaforo {
         // Os que ficam de frente um para o outro pertencem ao mesmo eixo e mudam ao mesmo tempo.
         this.cabecas = [[x - 41, y + 41, 'H'], [x + 41, y - 41, 'H'], [x - 41, y - 41, 'V'], [x + 41, y + 41, 'V']];
         this.zonas = this.cabecas.map(([px, py]) => {
-            const z = scene.add.zone(px, py, 40, 40).setInteractive({ useHandCursor: true }).setDepth(8);
+            // área de toque (54x54) maior do que o desenho, para ser fácil tocar no telemóvel
+            const z = scene.add.zone(px, py, 54, 54).setInteractive({ useHandCursor: true }).setDepth(8);
             z.on('pointerover', () => { this.hover = true; this.desenhar(); });
             z.on('pointerout', () => { this.hover = false; this.desenhar(); });
             return z;

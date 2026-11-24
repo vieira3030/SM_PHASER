@@ -36,7 +36,9 @@ export default class Grafo {
         return B.y > A.y ? 'S' : 'N';
     }
 
-    // Dijkstra. custo(a,b) devolve o tempo estimado (s) para percorrer a aresta a->b.
+    // Dijkstra. custo(a,b) devolve o tempo (s) para percorrer a aresta a->b (distância / velocidade),
+    // por isso a rota devolvida é a mais curta. Tira sempre da fila o nó com menor distância acumulada,
+    // atualiza os vizinhos e, no fim, reconstrói o caminho pelos antecessores (prev).
     // proibido (opcional): nó que a rota não pode usar (evita inversões de marcha ao entrar num destino)
     rota(origem, destino, custo, proibido = null) {
         const dist = { [origem]: 0 }, prev = {}, feito = new Set();

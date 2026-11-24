@@ -1,11 +1,12 @@
 import { LARGURA, ALTURA, FONTE, COR } from '../classes/Constantes.js';
-import { criarBotao, cartao } from '../classes/UI.js';
+import { criarBotao, cartao, camaraHD } from '../classes/UI.js';
 import Som from '../classes/Som.js';
 
 export default class MenuScene extends Phaser.Scene {
     constructor() { super('MenuScene'); }
 
     create() {
+        camaraHD(this);
         Som.pararTudo();
         // mapa ampliado a cobrir o ecrã, escurecido; os carros passam por trás do cartão
         this.add.image(LARGURA / 2, ALTURA / 2, 'mapa2').setScale(LARGURA / 1200).setDepth(-2);
@@ -25,6 +26,7 @@ export default class MenuScene extends Phaser.Scene {
         this.add.text(LARGURA / 2, 182, 'Smart Traffic Control', { fontFamily: 'Georgia, serif', fontSize: '36px', color: COR.tintaTxt, fontStyle: 'bold' }).setOrigin(0.5);
         this.add.text(LARGURA / 2, 224, 'Controla os semáforos, dá passagem às ambulâncias\ne encontra o melhor posto para os carros elétricos.', { fontFamily: FONTE, fontSize: '14px', color: COR.cinzaTxt, align: 'center' }).setOrigin(0.5);
 
+        this.input.keyboard.once('keydown-ENTER', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0 }));
         criarBotao(this, LARGURA / 2 - 105, 282, 200, 44, 'JOGAR', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0 }), { cor: COR.verde, corHover: 0x2d8a5e });
         criarBotao(this, LARGURA / 2 + 105, 282, 200, 44, 'COMO JOGAR', () => this.scene.start('InstrucoesScene'), { cor: COR.papelEscuro, corHover: 0x4a5260 });
 

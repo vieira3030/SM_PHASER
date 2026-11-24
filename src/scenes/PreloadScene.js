@@ -1,3 +1,4 @@
+import { camaraHD } from '../classes/UI.js';
 import { LARGURA, ALTURA, FONTE } from '../classes/Constantes.js';
 import Som from '../classes/Som.js';
 
@@ -8,6 +9,7 @@ export default class PreloadScene extends Phaser.Scene {
     constructor() { super('PreloadScene'); }
 
     preload() {
+        camaraHD(this);
         this.add.rectangle(LARGURA / 2, ALTURA / 2, LARGURA, ALTURA, 0x2b2d42);
         this.add.text(LARGURA / 2, ALTURA / 2 - 70, 'SMART TRAFFIC CONTROL', { fontFamily: 'Georgia, serif', fontSize: '34px', color: '#f1e8d2', fontStyle: 'bold' }).setOrigin(0.5);
         const estado = this.add.text(LARGURA / 2, ALTURA / 2 + 40, 'A carregar...', { fontFamily: FONTE, fontSize: '15px', color: '#c9c2ad' }).setOrigin(0.5);

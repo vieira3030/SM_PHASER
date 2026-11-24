@@ -1,6 +1,6 @@
 // Componentes de interface reutilizáveis (botões, títulos) – funcionam com rato e toque.
 import Som from './Som.js';
-import { FONTE, COR } from './Constantes.js';
+import { FONTE, COR, LARGURA, ALTURA, ESCALA } from './Constantes.js';
 
 export function criarBotao(scene, x, y, w, h, texto, aoClicar, opcoes = {}) {
     const cor = opcoes.cor ?? COR.terracota, corHover = opcoes.corHover ?? COR.terracotaEsc, txt = opcoes.txt ?? '#fffdf6';
@@ -34,3 +34,8 @@ export function cartao(scene, x, y, w, h, opcoes = {}) {
     return g;
 }
 
+
+// câmara com zoom ESCALA centrada no ecrã de jogo (800x480): ver main.js
+export function camaraHD(scene) {
+    scene.cameras.main.setZoom(ESCALA).centerOn(LARGURA / 2, ALTURA / 2);
+}

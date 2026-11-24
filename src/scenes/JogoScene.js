@@ -3,13 +3,15 @@ import Grafo from '../classes/Grafo.js';
 import Semaforo from '../classes/Semaforo.js';
 import Veiculo from '../classes/Veiculo.js';
 import MotorDSS from '../classes/MotorDSS.js';
-import GestorNiveis, { TEMPO_INICIAL, BONUS_ENTREGA, BONUS_NIVEL } from '../classes/GestorNiveis.js';
+import GestorNiveis, { TEMPO_INICIAL, BONUS_NIVEL, bonusEntrega } from '../classes/GestorNiveis.js';
 import { POSTOS, sortearOcupacao, euros } from '../classes/Dados.js';
 import Som from '../classes/Som.js';
-import { criarBotao, cartao } from '../classes/UI.js';
+import { criarBotao, cartao, camaraHD } from '../classes/UI.js';
 
 const TX = '#e8e6df';
-const ESCOLHA_MAX = 15;   // segundos para escolher o posto (depois segue para o selecionado)
+const ESCOLHA_MAX = 15;
+// a partir desta distância ao centro, um carro já está "dentro" do cruzamento (segue mesmo com vermelho)
+const DENTRO = DIST_PARAGEM - 21;   // segundos para escolher o posto (depois segue para o selecionado)
 
 export default class JogoScene extends Phaser.Scene {
     constructor() { super('JogoScene'); }
@@ -22,6 +24,7 @@ export default class JogoScene extends Phaser.Scene {
     }
 
     create() {
+        camaraHD(this);
         this.cfg = GestorNiveis.obter(this.nivel);
         this.layout = this.cache.json.get('niveis').niveis[this.nivel - 1];
         this.grafo = new Grafo(this.layout.colunas, this.layout.linhas);
@@ -53,7 +56,66 @@ export default class JogoScene extends Phaser.Scene {
             const o = sensor.owner;
             if (o && v !== o && Math.abs(Phaser.Math.Angle.Wrap(v.rotation - o.rotation)) < 0.8) o.bloqueado = true;
         });
+        this.criarTeclado();
+        this.criarTutorial();
         this.mostrarIntro();
+    }
+
+    // Teclado: A aceita a sugestão, I ignora, 1-4 escolhem o posto, Espaço confirma, P ou Esc pausam
+    criarTeclado() {
+        const k = this.input.keyboard;
+        k.on('keydown-A', () => this.aceitarRec());
+        k.on('keydown-I', () => this.ignorarRec());
+        k.on('keydown-SPACE', () => this.confirmarPosto());
+        ['ONE', 'TWO', 'THREE', 'FOUR'].forEach((tecla, i) => k.on('keydown-' + tecla, () => {
+            if (this.postos[i]) this.verPosto(this.postos[i]);
+        }));
+        k.on('keydown-P', () => this.alternarPausa());
+        k.on('keydown-ESC', () => this.alternarPausa());
+    }
+
+    // Tutorial do nível 1: uma seta a saltar aponta para o que fazer (semáforo a trocar, depois CONFIRMAR).
+    // Desaparece depois de o jogador seguir 3 indicações.
+    criarTutorial() {
+        this.passosTutorial = this.nivel === 1 ? 0 : 99;
+        this.seta = this.add.container(0, 0).setDepth(35).setVisible(false);
+        const dentro = this.add.container(0, 0);
+        const g = this.add.graphics();
+        g.fillStyle(0xe9b949, 1).fillTriangle(-9, -14, 9, -14, 0, 0).fillRect(-3, -26, 6, 13);
+        g.lineStyle(2, 0x12151b, 1).strokeTriangle(-9, -14, 9, -14, 0, 0);
+        this.setaTxt = this.add.text(0, -40, '', { fontFamily: FONTE, fontSize: '12px', color: '#12151b', fontStyle: 'bold', backgroundColor: '#e9b949', padding: { x: 6, y: 3 } }).setOrigin(0.5);
+        dentro.add([g, this.setaTxt]);
+        this.seta.add(dentro);
+        this.tweens.add({ targets: dentro, y: -8, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
+    atualizarTutorial() {
+        if (this.passosTutorial >= 3) { this.seta.setVisible(false); return; }
+        const ev = this.evEmEscolha();
+        if (ev) {
+            this.seta.setVisible(true).setPosition(this.btnConfirmar.x, this.btnConfirmar.y - 16);
+            this.setaTxt.setText('Escolhe o posto e confirma');
+        } else if (this.rec) {
+            const [px, py] = this.rec.sem.cabecas.find(c => c[2] === this.rec.eixo);
+            this.seta.setVisible(true).setPosition(px, py - 16);
+            this.setaTxt.setText('Clica aqui');
+        } else this.seta.setVisible(false);
+    }
+
+    alternarPausa() {
+        if (this.pausado && !this.emPausa) return;      // intro ou fim de nível: não há pausa
+        this.emPausa = !this.emPausa;
+        this.pausado = this.emPausa;
+        this.time.paused = this.emPausa;
+        if (this.emPausa) {
+            this.tweens.pauseAll(); this.sound.pauseAll();
+            this.cartaoPausa = this.sobrepor('Pausa', 'Carrega em P, Esc ou no botão ❚❚ para continuar.');
+            this.btnPausa.setTexto('▶');
+        } else {
+            this.tweens.resumeAll(); this.sound.resumeAll();
+            if (this.cartaoPausa) this.cartaoPausa.destroy();
+            this.btnPausa.setTexto('❚❚');
+        }
     }
 
     // ------------------------------------------------------------ mapa
@@ -97,7 +159,7 @@ export default class JogoScene extends Phaser.Scene {
         };
         const oposta = { N: 'S', S: 'N', E: 'W', W: 'E' };
         for (const c of this.lista) {
-            if (c === v || c.fim || Math.abs(c.x - s.x) > 34 || Math.abs(c.y - s.y) > 34) continue;
+            if (c === v || c.fim || Math.abs(c.x - s.x) > DENTRO || Math.abs(c.y - s.y) > DENTRO) continue;
             if (c.dir === v.dir) continue;
             if (c.dir === oposta[v.dir] && !virar(v) && !virar(c)) continue;
             return true;
@@ -107,6 +169,9 @@ export default class JogoScene extends Phaser.Scene {
 
     // Velocidade máxima permitida pelo próximo semáforo da rota: com vermelho o carro trava de forma
     // progressiva até à linha de paragem. Só segue quem já estava dentro do cruzamento quando mudou.
+    //   dist = distância (ao longo da estrada) até ao ponto de paragem (DIST_PARAGEM antes do centro)
+    //   vMax = sqrt(2 × a × dist), com a = 300 px/s²  (equação do movimento: v² = 2·a·d)
+    // Assim o carro chega ao ponto de paragem com velocidade 0. Com verde (e sem conflito) não há limite.
     limiteSemaforo(v) {
         if (v.fim || v.estado === 'ESCOLHA') return Infinity;
         const j = v.nodoIdx[Math.min(v.idx, v.nodoIdx.length - 1)] - 1;
@@ -115,7 +180,7 @@ export default class JogoScene extends Phaser.Scene {
         if (!s) return Infinity;
         const dir = this.grafo.direcao(v.ids[j - 1], no), [ux, uy] = VETOR[dir];
         const dist = (s.x - ux * DIST_PARAGEM - v.x) * ux + (s.y - uy * DIST_PARAGEM - v.y) * uy;
-        if (dist < -20 || dist > 130) return Infinity;   // já dentro do cruzamento (segue) ou ainda longe
+        if (dist < -21 || dist > 130) return Infinity;   // já dentro do cruzamento (segue) ou ainda longe
         if (s.verde(eixoDe(dir)) && !this.conflito(v, s)) return Infinity;
         return dist <= 0 ? 0 : Math.sqrt(2 * 300 * dist);  // vermelho: trava até à linha
     }
@@ -123,7 +188,7 @@ export default class JogoScene extends Phaser.Scene {
     cliqueSemaforo(s) {
         if (this.pausado) return;
         if (this.rec && this.rec.sem === s && outroEixo(s.eixo) === this.rec.eixo) {
-            this.estat.aceites++; this.pontos += 5; this.rec = null; s.destacar(false);
+            this.estat.aceites++; this.pontos += 5; this.rec = null; s.destacar(false); this.passosTutorial++;
         }
         s.alternar();
         Som.tocar('semaforo');
@@ -143,6 +208,8 @@ export default class JogoScene extends Phaser.Scene {
         };
 
         txt(X + 12, 8, `NÍVEL ${this.nivel} · ${this.cfg.titulo.split(' – ')[1].toUpperCase()}`, 11, COR.terracotaTxt, true);
+        this.btnPausa = criarBotao(this, X + 176, 16, 30, 22, '❚❚', () => this.alternarPausa(),
+            { cor: COR.papelEscuro, corHover: 0x4a5260, fonte: '11px' }).setDepth(14);
         txt(X + 12, 26, 'TEMPO', 10, COR.cinzaTxt, true);
         this.hudTempo = this.add.text(X + 12, 37, '', { fontFamily: 'Georgia, serif', fontSize: '30px', color: TX, fontStyle: 'bold' }).setDepth(12);
         txt(X + 118, 26, 'PONTOS', 10, COR.cinzaTxt, true);
@@ -240,7 +307,7 @@ export default class JogoScene extends Phaser.Scene {
         if (!r || this.pausado) return;
         r.sem.pedirVerde(r.eixo);
         r.sem.destacar(false);
-        this.estat.aceites++; this.pontos += 5;
+        this.estat.aceites++; this.pontos += 5; this.passosTutorial++;
         this.rec = null;
         Som.tocar('aceitar');
         this.mostrarRec();
@@ -248,7 +315,7 @@ export default class JogoScene extends Phaser.Scene {
 
     ignorarRec() {
         const r = this.rec;
-        if (!r) return;
+        if (!r || this.pausado) return;
         this.ignorados[r.sem.nome] = performance.now() + 9000;
         r.sem.destacar(false);
         this.estat.ignoradas++;
@@ -394,7 +461,7 @@ export default class JogoScene extends Phaser.Scene {
         this.desenharRotas();
     }
 
-    confirmarPosto() { if (this.previa) this.escolherPosto(this.previa); }
+    confirmarPosto() { if (this.previa && this.evEmEscolha()) this.escolherPosto(this.previa); }
 
     atualizarPostos() {
         const ev = this.evEmEscolha();
@@ -443,6 +510,7 @@ export default class JogoScene extends Phaser.Scene {
         ev.estimativa = it;
         ev.eficiencia = Math.max(0, Math.min(100, Math.round(100 * it.score / melhor.score)));
         if (!auto) {
+            this.passosTutorial++;
             this.estat.escolhas++; this.estat.somaEficiencia += ev.eficiencia;
             if (it === melhor) this.estat.aceites++; else this.estat.ignoradas++;
         }
@@ -455,8 +523,9 @@ export default class JogoScene extends Phaser.Scene {
     // ------------------------------------------------------------ chegadas
     aoMeta(v) {
         if (v.tipo === 'NORMAL') return;     // carros normais apenas atravessam a cidade
-        this.tempo += BONUS_ENTREGA;
-        this.flutuar(v.x, v.y, `+${BONUS_ENTREGA} s`, '#6fd3a0');
+        const bonus = bonusEntrega(this.cfg, v.idade);
+        this.tempo += bonus;
+        this.flutuar(v.x, v.y, `+${bonus} s`, '#6fd3a0');
         if (v.tipo === 'AMB') {
             const pts = 100 + Math.max(0, Math.round(60 - v.idade) * 2);
             this.pontos += pts; this.feitos.amb++; this.estat.ambEntregues++;
@@ -576,7 +645,7 @@ export default class JogoScene extends Phaser.Scene {
         }
     }
 
-    // distância de segurança: trava se houver um veículo à frente, na mesma faixa e no mesmo sentido
+    // distância de segurança: trava se houver um veículo à frente na mesma faixa
     distanciaSegura() {
         for (const v of this.lista) {
             if (v.fim) continue;
@@ -586,8 +655,10 @@ export default class JogoScene extends Phaser.Scene {
                 const dx = o.x - v.x, dy = o.y - v.y;
                 const frente = dx * c + dy * sn;
                 if (frente <= 0 || frente > 48) continue;
-                if (Math.abs(-dx * sn + dy * c) > 13) continue;
-                if (!o.fim && Math.abs(Phaser.Math.Angle.Wrap(v.rotation - o.rotation)) > 1.0) continue;
+                if (Math.abs(-dx * sn + dy * c) > 17) continue;   // largura da faixa ocupada (inclui quem está a sair dela)
+                // carros noutro sentido só contam se estiverem mesmo à frente (ex.: ao virar à esquerda para
+                // um posto, o carro espera que passe quem vem na faixa contrária)
+                if (!o.fim && Math.abs(Phaser.Math.Angle.Wrap(v.rotation - o.rotation)) > 1.0 && frente > 30) continue;
                 v.bloqueado = true;
                 break;
             }
@@ -628,6 +699,7 @@ export default class JogoScene extends Phaser.Scene {
             this.avaliarDSS();
             this.atualizarPostos();
             this.desenharRotas();
+            this.atualizarTutorial();
             if (this.lista.some(v => v.tipo === 'AMB' && !v.fim)) Som.ciclo('sirene', 0.3, 'e'); else Som.parar('sirene');
         }
         this.atualizarHUD();
