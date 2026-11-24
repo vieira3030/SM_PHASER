@@ -21,6 +21,8 @@ export default class JogoScene extends Phaser.Scene {
         this.pontos = (d && d.pontos) || 0;
         this.tempo = d && d.tempo !== undefined ? d.tempo : TEMPO_INICIAL;
         this.estat = (d && d.estat) || { aceites: 0, ignoradas: 0, ambEntregues: 0, evCarregados: 0, escolhas: 0, somaEficiencia: 0 };
+        // cópia do estado no início do nível: usada pelo botão Reiniciar do menu de pausa
+        this.inicioNivel = { nivel: this.nivel, pontos: this.pontos, tempo: this.tempo, estat: { ...this.estat } };
     }
 
     create() {
@@ -72,6 +74,8 @@ export default class JogoScene extends Phaser.Scene {
         }));
         k.on('keydown-P', () => this.alternarPausa());
         k.on('keydown-ESC', () => this.alternarPausa());
+        k.on('keydown-R', () => { if (this.emPausa) this.sairPausa('reiniciar'); });
+        k.on('keydown-M', () => { if (this.emPausa) this.sairPausa('menu'); });
     }
 
     // Tutorial do nível 1: uma seta a saltar aponta para o que fazer (semáforo a trocar, depois CONFIRMAR).
@@ -110,13 +114,51 @@ export default class JogoScene extends Phaser.Scene {
         this.time.paused = this.emPausa;
         if (this.emPausa) {
             this.tweens.pauseAll(); this.sound.pauseAll();
-            this.cartaoPausa = this.sobrepor('Pausa', 'Carrega em P, Esc ou no botão ❚❚ para continuar.');
+            this.menuPausa = this.criarMenuPausa();
             this.btnPausa.setTexto('▶');
         } else {
             this.tweens.resumeAll(); this.sound.resumeAll();
-            if (this.cartaoPausa) this.cartaoPausa.destroy();
+            if (this.menuPausa) this.menuPausa.destroy();
             this.btnPausa.setTexto('❚❚');
         }
+    }
+
+    // menu de pausa: continuar, reiniciar o nível, voltar ao menu e lista de comandos
+    criarMenuPausa() {
+        const c = this.add.container(MAPA_L / 2, ALTURA / 2).setDepth(40);
+        const fundo = this.add.rectangle(0, 0, MAPA_L, ALTURA, 0x0b0d12, 0.6).setInteractive();   // bloqueia cliques no mapa
+        c.add([fundo, cartao(this, -250, -190, 500, 380),
+            this.add.text(0, -158, 'Pausa', { fontFamily: 'Georgia, serif', fontSize: '28px', color: COR.terracotaTxt, fontStyle: 'bold' }).setOrigin(0.5),
+            this.add.text(-220, -118, 'COMANDOS', { fontFamily: FONTE, fontSize: '11px', color: COR.cinzaTxt, fontStyle: 'bold' })]);
+        const comandos = [
+            ['Rato / toque', 'clicar num semáforo troca-o (verde/vermelho)'],
+            ['A', 'aceitar a sugestão do Assistente'],
+            ['I', 'ignorar a sugestão'],
+            ['1 – 4', 'escolher o posto de carregamento'],
+            ['Espaço', 'confirmar o posto'],
+            ['P / Esc', 'pausa / continuar'],
+            ['R  ·  M', 'reiniciar o nível  ·  menu (em pausa)']
+        ];
+        comandos.forEach(([tecla, acao], i) => {
+            const y = -96 + i * 24;
+            c.add(this.add.text(-220, y, tecla, { fontFamily: FONTE, fontSize: '13px', color: TX, fontStyle: 'bold', backgroundColor: '#3a414d', padding: { x: 6, y: 2 } }));
+            c.add(this.add.text(-100, y + 2, acao, { fontFamily: FONTE, fontSize: '13px', color: COR.cinzaTxt }));
+        });
+        const bot = [
+            ['CONTINUAR', () => this.alternarPausa(), { cor: COR.verde, corHover: 0x2d8a5e }],
+            ['REINICIAR NÍVEL', () => this.sairPausa('reiniciar'), { cor: COR.papelEscuro, corHover: 0x4a5260 }],
+            ['MENU PRINCIPAL', () => this.sairPausa('menu'), { cor: COR.papelEscuro, corHover: 0x4a5260 }]
+        ];
+        bot.forEach(([t, fn, op], i) => c.add(criarBotao(this, -156 + i * 156, 148, 146, 36, t, fn, { ...op, fonte: '13px' })));
+        return c;
+    }
+
+    sairPausa(destino) {
+        this.time.paused = false; this.tweens.resumeAll(); this.sound.resumeAll();
+        this.emPausa = false;
+        Som.pararTudo();
+        if (destino === 'menu') this.scene.start('MenuScene');
+        else this.scene.restart({ ...this.inicioNivel, estat: { ...this.inicioNivel.estat } });
     }
 
     // ------------------------------------------------------------ mapa
