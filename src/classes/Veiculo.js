@@ -82,9 +82,11 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         this.idade += dt;
         const aguardar = this.estado === 'ESCOLHA';
         const parado = this.parar || this.bloqueado || aguardar;
-        const alvo = parado ? 0 : this.velBase;
-        const acel = alvo > this.v ? 110 : 240;
+        // vMax: limite imposto pelo semáforo seguinte (travagem progressiva até à linha de paragem)
+        const alvo = parado ? 0 : Math.min(this.velBase, this.vMax ?? Infinity);
+        const acel = alvo > this.v ? 110 : 700;
         this.v = this.v < alvo ? Math.min(this.v + acel * dt, alvo) : Math.max(this.v - acel * dt, alvo);
+        this.vMax = Infinity;
         this.parar = false;
         this.bloqueado = false;
 
@@ -113,7 +115,12 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
             this.definirDirecao();
         }
         if (this.v > 1) this.rotation = girar(this.rotation, Math.atan2(dy, dx), 7 * dt);
-        this.body.setVelocity(dx / dist * this.v, dy / dist * this.v);
+        // movimento controlado pelo jogo (passo limitado): a física Arcade só deteta sobreposições,
+        // assim um frame mais lento nunca faz o carro "saltar" a linha de paragem
+        this.body.setVelocity(0, 0);
+        const passo = Math.min(this.v * dt, dist);
+        this.x += dx / dist * passo;
+        this.y += dy / dist * passo;
         this.atualizarSensor();
         this.sombra.setPosition(this.x + 2, this.y + 3).setRotation(this.rotation);
         this.alpha = aguardar ? 0.7 + 0.3 * Math.sin(this.cena.time.now / 90) : 1;
@@ -125,7 +132,10 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         this.idxMeta = caminho.idxMeta;
         this.ids = caminho.ids;
         this.nodoIdx = caminho.nodoIdx;
+        // continua a partir do primeiro ponto que está À FRENTE do carro (evita meia-volta)
+        const c = Math.cos(this.rotation), s = Math.sin(this.rotation);
         this.idx = 1;
+        while (this.idx < this.pontos.length - 1 && (this.pontos[this.idx].x - this.x) * c + (this.pontos[this.idx].y - this.y) * s < 6) this.idx++;
         this.definirDirecao();
     }
 

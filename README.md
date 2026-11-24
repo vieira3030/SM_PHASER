@@ -9,9 +9,14 @@ Clicas nos semáforos de Viana do Castelo para dar passagem às ambulâncias at�
 Abrir a pasta no VS Code e usar **Live Server** (`http://127.0.0.1:5500`). Não funciona a partir de `file://` (módulos ES). Não usa APIs nem internet.
 
 ## Níveis
-1. Emergência — 4 ambulâncias ao hospital.
-2. Carregamento — 4 carros elétricos: escolher o posto (tempo total + custo).
-3. Hora de ponta — 3 ambulâncias + 3 carros elétricos.
+A cidade cresce de nível para nível e há mais missões ao mesmo tempo.
+1. Centro — grelha 2x2 (4 cruzamentos): 3 ambulâncias + 2 elétricos, 1 missão de cada vez.
+2. Avenidas — grelha 3x2 (6 cruzamentos): 4 ambulâncias + 3 elétricos, até 2 em simultâneo.
+3. Hora de ponta — grelha 3x3 (9 cruzamentos): 5 ambulâncias + 4 elétricos, até 3 em simultâneo.
+
+Relógio global: começa em 40 s, cada entrega dá +10 s (o tempo não reinicia). O tempo que sobra passa para o nível seguinte (+10 s). Se chegar a 0, o jogo termina. Penalizações: elétrico sem bateria (−10 s), congestionamento (−8 s).
+
+Os mapas (assets/img/mapa1-3.png) e a geometria do hospital e dos postos (assets/data/niveis.json) foram gerados por código.
 
 ## Conceitos técnicos (apoio à decisão)
 - **Motor de regras SE–ENTÃO com explicação** (`MotorDSS.avaliarSemaforos`): ambulância, fila longa, espera longa.

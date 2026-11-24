@@ -70,7 +70,7 @@ export default class MotorDSS {
     // Critérios: tempo total (viagem + espera + carga) e custo da carga, com pesos que dependem da bateria.
     static classificarPostos(ev, postos, tempoDe) {
         const dados = postos.map(p => {
-            const T = tempoDe(p.no);
+            const T = tempoDe(p);
             const c = estimarCarga(p, ev.bateria);
             const viagem = T * MIN_POR_SEGUNDO;
             return { p, T, c, viagem, total: viagem + p.espera + c.minCarga };

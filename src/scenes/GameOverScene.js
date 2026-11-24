@@ -16,7 +16,7 @@ export default class GameOverScene extends Phaser.Scene {
         if (novo) { try { localStorage.setItem('stc_recorde', String(d.pontos)); } catch (err) { /* ignora */ } recorde = d.pontos; }
         Som.tocar(d.vitoria ? 'nivel' : 'erro');
 
-        this.add.image(LARGURA / 2, ALTURA / 2, 'mapa').setScale(LARGURA / 1200);
+        this.add.image(LARGURA / 2, ALTURA / 2, 'mapa2').setScale(LARGURA / 1200);
         this.add.rectangle(LARGURA / 2, ALTURA / 2, LARGURA, ALTURA, 0x12151b, 0.72);
         cartao(this, 170, 28, 460, 424);
         this.add.text(LARGURA / 2, 70, d.vitoria ? 'Cidade em ordem!' : 'Fim de turno', { fontFamily: 'Georgia, serif', fontSize: '34px', color: d.vitoria ? COR.verdeTxt : COR.terracotaTxt, fontStyle: 'bold' }).setOrigin(0.5);

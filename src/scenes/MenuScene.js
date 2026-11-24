@@ -8,18 +8,17 @@ export default class MenuScene extends Phaser.Scene {
     create() {
         Som.pararTudo();
         // mapa ampliado a cobrir o ecrã, escurecido; os carros passam por trás do cartão
-        this.add.image(LARGURA / 2, ALTURA / 2, 'mapa').setScale(LARGURA / 1200).setDepth(-2);
+        this.add.image(LARGURA / 2, ALTURA / 2, 'mapa2').setScale(LARGURA / 1200).setDepth(-2);
         this.add.rectangle(LARGURA / 2, ALTURA / 2, LARGURA, ALTURA, 0x12151b, 0.55).setDepth(-1);
-        const passar = (frame, y, dur, delay, volta, anim) => {
-            const s = this.add.sprite(volta ? LARGURA + 50 : -50, y, 'carros', frame).setScale(0.7).setDepth(1);
+        // carros a passar nas ruas verticais de cada lado do cartão
+        const passar = (frame, x, dur, delay, sobe, anim) => {
+            const s = this.add.sprite(x, sobe ? ALTURA + 50 : -50, 'carros', frame).setScale(0.7).setDepth(1).setRotation(sobe ? -Math.PI / 2 : Math.PI / 2);
             if (anim) s.play('anim_amb');
-            s.setRotation(volta ? Math.PI : 0);
-            this.tweens.add({ targets: s, x: volta ? -60 : LARGURA + 60, duration: dur, delay, repeat: -1, repeatDelay: Phaser.Math.Between(800, 3000) });
+            this.tweens.add({ targets: s, y: sobe ? -60 : ALTURA + 60, duration: dur, delay, repeat: -1, repeatDelay: Phaser.Math.Between(800, 3000) });
         };
-        // faixas visíveis acima e abaixo do cartão
-        passar(16, 108, 5600, 600, false, true); passar(0, 108, 6600, 3200, false);
-        passar(2, 70, 7000, 1500, true); passar(18, 70, 6400, 4200, true);
-        passar(8, 378, 6200, 0, false); passar(12, 340, 7200, 2000, true); passar(6, 378, 6800, 4500, false);
+        passar(16, 151, 4200, 400, false, true); passar(0, 151, 5200, 2600, false);
+        passar(2, 169, 5600, 1200, true); passar(18, 631, 4800, 800, false);
+        passar(8, 649, 5000, 0, true); passar(12, 649, 5400, 3000, true); passar(6, 631, 5200, 4200, false);
 
         cartao(this, LARGURA / 2 - 230, 110, 460, 270);
         this.add.text(LARGURA / 2, 134, 'VIANA DO CASTELO · CENTRAL DE TRÁFEGO', { fontFamily: FONTE, fontSize: '12px', color: COR.terracotaTxt, fontStyle: 'bold' }).setOrigin(0.5);

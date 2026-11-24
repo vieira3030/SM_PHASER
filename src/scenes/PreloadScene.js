@@ -16,11 +16,10 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.on('progress', (p) => { barra.width = 398 * p; estado.setText(`A carregar... ${Math.round(p * 100)}%`); });
 
         this.load.setPath('assets/');
-        this.load.image('mapa', 'img/mapa.png');
+        [1, 2, 3].forEach(n => this.load.image('mapa' + n, `img/mapa${n}.png`));
+        this.load.json('niveis', 'data/niveis.json');
         this.load.spritesheet('carros', 'img/carros.png', { frameWidth: 72, frameHeight: 36 });
-        this.load.image('pin_posto', 'img/pin_posto.png');
-        this.load.image('pin_hospital', 'img/pin_hospital.png');
-        ['coracao', 'raio', 'bateria', 'euro', 'relogio'].forEach(n => this.load.image('ic_' + n, `img/ic_${n}.png`));
+                ['coracao', 'raio', 'bateria', 'euro', 'relogio'].forEach(n => this.load.image('ic_' + n, `img/ic_${n}.png`));
         SONS.forEach(s => this.load.audio(s, [`audio/${s}.ogg`, `audio/${s}.mp3`]));
     }
 

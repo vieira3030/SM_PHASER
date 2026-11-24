@@ -1,9 +1,10 @@
-import { COLUNAS, LINHAS, MAPA_L, ALTURA, FAIXA, VETOR } from './Constantes.js';
+import { MAPA_L, ALTURA, FAIXA, VETOR } from './Constantes.js';
 
 // Grafo da rede viária: cruzamentos (I) e pontos de entrada/saída nas bordas do mapa (B).
 // Usado para calcular rotas (Dijkstra) e os pontos de passagem (waypoints) dos veículos.
 export default class Grafo {
-    constructor() {
+    // colunas/linhas: coordenadas das avenidas do nível (a grelha cresce de nível para nível: 2x2, 3x2, 3x3)
+    constructor(COLUNAS, LINHAS) {
         this.nos = {};
         this.adj = {};
         LINHAS.forEach((y, r) => COLUNAS.forEach((x, c) => this.addNo(`I${r}${c}`, x, y, 'I')));
@@ -36,7 +37,8 @@ export default class Grafo {
     }
 
     // Dijkstra. custo(a,b) devolve o tempo estimado (s) para percorrer a aresta a->b.
-    rota(origem, destino, custo) {
+    // proibido (opcional): nó que a rota não pode usar (evita inversões de marcha ao entrar num destino)
+    rota(origem, destino, custo, proibido = null) {
         const dist = { [origem]: 0 }, prev = {}, feito = new Set();
         const fila = [origem];
         while (fila.length) {
@@ -48,6 +50,7 @@ export default class Grafo {
             for (const v of this.adj[u]) {
                 // não atravessar pontos de borda (só são início/fim de viagem)
                 if (this.nos[v].tipo === 'B' && v !== destino) continue;
+                if (v === proibido) continue;
                 const d = dist[u] + custo(u, v);
                 if (dist[v] === undefined || d < dist[v]) { dist[v] = d; prev[v] = u; fila.push(v); }
             }
@@ -99,5 +102,29 @@ export default class Grafo {
         const idxMeta = pts.length - 1;
         add({ x: pf.x + VETOR[dN][0] * 44, y: pf.y + VETOR[dN][1] * 44 }, ids.length);
         return { pontos: pts, idxMeta, ids, nodoIdx };
+    }
+
+    // Rota até um destino (hospital ou posto). O destino fica junto à aresta a->b: o veículo chega a 'a'
+    // sem passar por 'b', segue pela aresta a->b e, a meio do quarteirão, vira à direita para a baía k.
+    caminhoDestino(origem, dest, k, custo) {
+        const r = this.rota(origem, dest.a, custo, dest.b);
+        if (!r) return null;
+        const ids = [...r.ids, dest.b];
+        const cam = this.caminho(ids);
+        const { eixo, valor } = dest.corte;
+        let corte = null;
+        for (let i = cam.pontos.length - 1; i >= 1 && !corte; i--) {
+            const p = cam.pontos[i - 1], q = cam.pontos[i];
+            if (p[eixo] !== q[eixo] && (p[eixo] - valor) * (q[eixo] - valor) <= 0) {
+                const t = (valor - p[eixo]) / (q[eixo] - p[eixo]);
+                corte = { i, p: { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t } };
+            }
+        }
+        if (!corte) return null;
+        const baia = dest.baias[k % dest.baias.length].map(([x, y]) => ({ x, y }));
+        const pontos = [...cam.pontos.slice(0, corte.i), corte.p, ...baia];
+        const n = r.ids.length;     // o nó b não é atravessado: a rota termina antes dele
+        const nodoIdx = [...cam.nodoIdx.slice(0, corte.i).map(v => Math.min(v, n)), ...Array(baia.length + 1).fill(n + 1)];
+        return { pontos, idxMeta: pontos.length - 1, ids: r.ids, nodoIdx, tempo: r.tempo + 1.5 };
     }
 }

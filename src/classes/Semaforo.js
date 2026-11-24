@@ -16,16 +16,16 @@ export default class Semaforo {
         this.proximoEixo = null;
         this.tempoVerde = Phaser.Math.FloatBetween(10, 15);
         this.gfx = scene.add.graphics().setDepth(6);
-        this.etiqueta = scene.add.text(x, y, nome.replace('S', ''), { fontFamily: FONTE, fontSize: '16px', color: '#1d1f2b', fontStyle: 'bold', backgroundColor: '#e9b949', padding: { x: 6, y: 2 } })
+        this.etiqueta = scene.add.text(x, y, '!', { fontFamily: FONTE, fontSize: '16px', color: '#1d1f2b', fontStyle: 'bold', backgroundColor: '#e9b949', padding: { x: 6, y: 2 } })
             .setOrigin(0.5).setDepth(7).setVisible(false);
         this.anel = scene.add.graphics().setDepth(7).setVisible(false);
-        this.anel.lineStyle(4, 0xe9b949, 1).strokeCircle(x, y, 40);
+        this.anel.lineStyle(4, 0xe9b949, 1).strokeCircle(x - 41, y + 41, 22).strokeCircle(x + 41, y - 41, 22);
         scene.tweens.add({ targets: this.anel, alpha: { from: 1, to: 0.25 }, duration: 420, yoyo: true, repeat: -1 });
-        // 4 cabeças de sinal (uma por aproximação), todas clicáveis; clicar em qualquer uma troca o verde do cruzamento
-        const c = 38;
-        this.cabecas = [[x - c, y + c, 'H'], [x + c, y - c, 'H'], [x - c, y - c, 'V'], [x + c, y + c, 'V']];
+        // 2 cabeças de sinal: a horizontal (canto sudoeste) controla a avenida horizontal,
+        // a vertical (canto nordeste) controla a rua vertical. Clicar em qualquer uma troca o verde.
+        this.cabecas = [[x - 41, y + 41, 'H'], [x + 41, y - 41, 'V']];
         this.zonas = this.cabecas.map(([px, py]) => {
-            const z = scene.add.zone(px, py, 34, 40).setInteractive({ useHandCursor: true }).setDepth(8);
+            const z = scene.add.zone(px, py, 44, 44).setInteractive({ useHandCursor: true }).setDepth(8);
             z.on('pointerover', () => { this.hover = true; this.desenhar(); });
             z.on('pointerout', () => { this.hover = false; this.desenhar(); });
             return z;
@@ -61,7 +61,7 @@ export default class Semaforo {
     update(dt) {
         this.t += dt;
         if (this.fase === 'VERDE' && this.t >= this.tempoVerde) this.iniciarTroca();
-        else if (this.fase === 'AMARELO' && this.t >= 1.1) { this.fase = 'VERMELHO_TODOS'; this.t = 0; this.desenhar(); }
+        else if (this.fase === 'AMARELO' && this.t >= 1.6) { this.fase = 'VERMELHO_TODOS'; this.t = 0; this.desenhar(); }
         else if (this.fase === 'VERMELHO_TODOS' && this.t >= 0.8) {
             this.eixo = this.proximoEixo || outroEixo(this.eixo);
             this.proximoEixo = null;
@@ -85,19 +85,21 @@ export default class Semaforo {
             if (this.fase === 'VERMELHO_TODOS' || this.eixo !== eixo) return 0;
             return this.fase === 'VERDE' ? 2 : 1;           // 0 vermelho, 1 amarelo, 2 verde
         };
+        const cores = [0xff4a3d, 0xffc83d, 0x3dff8a];
         this.cabecas.forEach(([px, py, eixo]) => {
-            const a = luz(eixo);
-            if (this.hover) g.lineStyle(2, 0xffffff, 0.8).strokeRoundedRect(px - 9, py - 17, 18, 34, 5);
-            g.fillStyle(0x000000, 0.3).fillRoundedRect(px - 5, py - 12, 14, 28, 4);
-            g.fillStyle(0x15171d, 1).fillRoundedRect(px - 7, py - 15, 14, 30, 4);
-            g.lineStyle(1, 0x4a4f5c, 1).strokeRoundedRect(px - 7, py - 15, 14, 30, 4);
-            [[0xff4a3d, 0], [0xffc83d, 1], [0x3dff8a, 2]].forEach(([cor, i]) => {
-                const ly = py - 9 + i * 9, on = (i === 0 && a === 0) || (i === 1 && a === 1) || (i === 2 && a === 2);
-                if (on) g.fillStyle(cor, 0.35).fillCircle(px, ly, 8);
-                g.fillStyle(on ? cor : 0x2c2f38, 1).fillCircle(px, ly, 3.6);
+            const a = luz(eixo), hz = eixo === 'H';
+            const w = hz ? 32 : 14, h = hz ? 14 : 32;
+            if (this.hover) g.lineStyle(2, 0xffffff, 0.9).strokeRoundedRect(px - w / 2 - 3, py - h / 2 - 3, w + 6, h + 6, 6);
+            g.fillStyle(0x000000, 0.3).fillRoundedRect(px - w / 2 + 2, py - h / 2 + 3, w, h, 4);
+            g.fillStyle(0x15171d, 1).fillRoundedRect(px - w / 2, py - h / 2, w, h, 4);
+            g.lineStyle(1, 0x4a4f5c, 1).strokeRoundedRect(px - w / 2, py - h / 2, w, h, 4);
+            cores.forEach((cor, i) => {
+                const lx = hz ? px - 10 + i * 10 : px, ly = hz ? py : py - 10 + i * 10, on = a === i;
+                if (on) g.fillStyle(cor, 0.35).fillCircle(lx, ly, 8);
+                g.fillStyle(on ? cor : 0x2c2f38, 1).fillCircle(lx, ly, 3.8);
             });
         });
     }
 
-    destacar(on) { this.anel.setVisible(on); this.etiqueta.setVisible(on); }
+    destacar(on) { this.anel.setVisible(on); }
 }
