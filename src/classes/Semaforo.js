@@ -2,8 +2,8 @@ import { COR, FONTE, outroEixo } from './Constantes.js';
 
 // Semáforo de um cruzamento: um eixo tem verde e o outro vermelho; clicar troca de imediato.
 // O eixo 'H' = avenidas horizontais (E/W); o eixo 'V' = verticais (N/S).
-// Visual: barras coloridas nas linhas de paragem, 4 focos nos cantos e um "medalhão" central com setas
-// que mostra qual o eixo com verde. Se o jogador não intervir, o ciclo é automático (duração aleatória).
+// Visual: 4 semáforos (um por via) e a linha de paragem de cada via pintada com a cor do seu sinal.
+// Se o jogador não intervir, troca sozinho ao fim de 10-15 s (duração aleatória).
 export default class Semaforo {
     constructor(scene, nome, x, y) {
         this.scene = scene;
@@ -14,15 +14,17 @@ export default class Semaforo {
         this.t = 0;
         this.tempoVerde = Phaser.Math.FloatBetween(10, 15);
         this.gfx = scene.add.graphics().setDepth(6);
+        this.linhas = scene.add.graphics().setDepth(1);   // linhas de paragem coloridas (por baixo dos carros)
         this.etiqueta = scene.add.text(x, y, '!', { fontFamily: FONTE, fontSize: '16px', color: '#1d1f2b', fontStyle: 'bold', backgroundColor: '#e9b949', padding: { x: 6, y: 2 } })
             .setOrigin(0.5).setDepth(7).setVisible(false);
         this.anel = scene.add.graphics().setDepth(7).setVisible(false);
         scene.tweens.add({ targets: this.anel, alpha: { from: 1, to: 0.25 }, duration: 420, yoyo: true, repeat: -1 });
-        // 2 cabeças de sinal: a horizontal (canto sudoeste) controla a avenida horizontal,
-        // a vertical (canto nordeste) controla a rua vertical. Clicar em qualquer uma troca o verde.
-        this.cabecas = [[x - 41, y + 41, 'H'], [x + 41, y - 41, 'V']];
+        // 4 semáforos, um por via, no canto à direita de quem chega (junto à linha de paragem):
+        //  quem vem de oeste -> canto SO, de este -> NE, de norte -> NO, de sul -> SE.
+        // Os que ficam de frente um para o outro pertencem ao mesmo eixo e mudam ao mesmo tempo.
+        this.cabecas = [[x - 41, y + 41, 'H'], [x + 41, y - 41, 'H'], [x - 41, y - 41, 'V'], [x + 41, y + 41, 'V']];
         this.zonas = this.cabecas.map(([px, py]) => {
-            const z = scene.add.zone(px, py, 44, 44).setInteractive({ useHandCursor: true }).setDepth(8);
+            const z = scene.add.zone(px, py, 40, 40).setInteractive({ useHandCursor: true }).setDepth(8);
             z.on('pointerover', () => { this.hover = true; this.desenhar(); });
             z.on('pointerout', () => { this.hover = false; this.desenhar(); });
             return z;
@@ -53,10 +55,16 @@ export default class Semaforo {
         if (this.t >= this.tempoVerde) this.alternar();
     }
 
-    // cabeça de sinal vista de cima: caixa escura com 3 luzes (só a ativa fica acesa), poste e sombra
+    // cabeça de sinal vista de cima: caixa escura com 2 luzes (vermelha e verde, só a ativa acesa)
     desenhar() {
         const g = this.gfx;
         g.clear();
+        // a linha de paragem de cada aproximação fica com a cor do seu sinal: é aí que o carro para
+        const x = this.x, y = this.y, L = this.linhas;
+        const cH = this.eixo === 'H' ? 0x2fd47a : 0xe8402f, cV = this.eixo === 'V' ? 0x2fd47a : 0xe8402f;
+        L.clear();
+        L.fillStyle(cH, 1).fillRect(x - 51, y + 1, 4, 26).fillRect(x + 47, y - 27, 4, 26);
+        L.fillStyle(cV, 1).fillRect(x - 27, y - 51, 26, 4).fillRect(x + 1, y + 47, 26, 4);
         const luz = (eixo) => (this.eixo === eixo ? 1 : 0);   // 0 vermelho, 1 verde
         const cores = [0xff4a3d, 0x3dff8a];
         this.cabecas.forEach(([px, py, eixo]) => {
@@ -78,7 +86,7 @@ export default class Semaforo {
     destacar(on, eixo) {
         this.anel.clear().setVisible(on);
         if (!on) return;
-        const [px, py] = this.cabecas.find(c => c[2] === eixo);
-        this.anel.lineStyle(4, 0xe9b949, 1).strokeCircle(px, py, 21);
+        this.anel.lineStyle(4, 0xe9b949, 1);
+        this.cabecas.filter(c => c[2] === eixo).forEach(([px, py]) => this.anel.strokeCircle(px, py, 20));
     }
 }

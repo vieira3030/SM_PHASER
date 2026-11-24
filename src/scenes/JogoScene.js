@@ -159,20 +159,20 @@ export default class JogoScene extends Phaser.Scene {
         });
 
         txt(X + 12, 146, 'ASSISTENTE', 10, COR.cinzaTxt, true);
-        cartao(this, X + 8, 159, 184, 76, { cor: COR.branco }).setDepth(11);
-        this.dssFaixa = this.add.rectangle(X + 12, 197, 4, 68, COR.cinza).setDepth(12);
+        cartao(this, X + 8, 159, 184, 90, { cor: COR.branco }).setDepth(11);
+        this.dssFaixa = this.add.rectangle(X + 12, 204, 4, 82, COR.cinza).setDepth(12);
         this.dssAcao = txt(X + 20, 164, '', 13, TX, true, 168);
         this.dssMotivo = txt(X + 20, 181, '', 11, COR.cinzaTxt, false, 168);
-        this.btnAceitar = criarBotao(this, X + 55, 222, 80, 20, 'ACEITAR', () => this.aceitarRec(), { cor: COR.verde, corHover: 0x2d8a5e, fonte: '11px' }).setDepth(14);
-        this.btnIgnorar = criarBotao(this, X + 145, 222, 80, 20, 'IGNORAR', () => this.ignorarRec(), { cor: COR.cinza, corHover: 0x5f6672, fonte: '11px' }).setDepth(14);
+        this.btnAceitar = criarBotao(this, X + 55, 236, 80, 20, 'ACEITAR', () => this.aceitarRec(), { cor: COR.verde, corHover: 0x2d8a5e, fonte: '11px' }).setDepth(14);
+        this.btnIgnorar = criarBotao(this, X + 145, 236, 80, 20, 'IGNORAR', () => this.ignorarRec(), { cor: COR.cinza, corHover: 0x5f6672, fonte: '11px' }).setDepth(14);
 
-        txt(X + 12, 242, 'TRÂNSITO PARADO', 10, COR.cinzaTxt, true);
-        this.add.rectangle(X + 110, 248, 78, 6, 0x3a414d).setOrigin(0, 0.5).setDepth(12);
-        this.barraCong = this.add.rectangle(X + 110, 248, 0, 6, COR.verde).setOrigin(0, 0.5).setDepth(13);
+        txt(X + 12, 256, 'TRÂNSITO PARADO', 10, COR.cinzaTxt, true);
+        this.add.rectangle(X + 110, 262, 78, 6, 0x3a414d).setOrigin(0, 0.5).setDepth(12);
+        this.barraCong = this.add.rectangle(X + 110, 262, 0, 6, COR.verde).setOrigin(0, 0.5).setDepth(13);
 
-        this.hudPostos = txt(X + 12, 262, '', 11, COR.terracotaTxt, true);
+        this.hudPostos = txt(X + 12, 274, '', 11, COR.terracotaTxt, true);
         this.cartoes = this.postos.map((p, i) => {
-            const c = this.add.container(X + 100, 296 + i * 38).setDepth(12);
+            const c = this.add.container(X + 100, 306 + i * 37).setDepth(12);
             const fundo = this.add.rectangle(0, 0, 186, 34, COR.branco).setStrokeStyle(2, COR.papelEscuro);
             const faixa = this.add.rectangle(-91, 0, 4, 34, COR.cinza);
             const t1 = this.add.text(-84, -13, '', { fontFamily: FONTE, fontSize: '11px', color: TX, fontStyle: 'bold' });
@@ -183,7 +183,7 @@ export default class JogoScene extends Phaser.Scene {
             Object.assign(c, { fundo, faixa, t1, t2, posto: p });
             return c;
         });
-        this.btnConfirmar = criarBotao(this, X + 100, 296 + this.postos.length * 38 + 2, 184, 26, 'CONFIRMAR', () => this.confirmarPosto(),
+        this.btnConfirmar = criarBotao(this, X + 100, 306 + this.postos.length * 37, 184, 24, 'CONFIRMAR', () => this.confirmarPosto(),
             { cor: COR.terracota, corHover: COR.terracotaEsc, fonte: '12px' }).setDepth(14);
 
         this.dicaTxt = this.add.text(MAPA_L / 2, ALTURA - 16, '', {
@@ -278,7 +278,7 @@ export default class JogoScene extends Phaser.Scene {
             return;
         }
         this.dssFaixa.setFillStyle(r.prioridade === 'ALTA' ? COR.vermelho : r.prioridade === 'MÉDIA' ? COR.amarelo : COR.verde);
-        this.dssAcao.setText(`Clica no semáforo assinalado`);
+        this.dssAcao.setText('Clica no semáforo com anel');
         this.dssMotivo.setText(r.motivo).setY(this.dssAcao.y + this.dssAcao.height + 2);
     }
 

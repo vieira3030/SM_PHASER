@@ -11,7 +11,7 @@ export default class InstrucoesScene extends Phaser.Scene {
         this.add.text(LARGURA / 2, 54, 'COMO JOGAR', { fontFamily: 'Georgia, serif', fontSize: '26px', color: COR.tintaTxt, fontStyle: 'bold' }).setOrigin(0.5);
 
         const itens = [
-            ['1', 'Clica nos semáforos', 'O semáforo deitado controla a rua horizontal, o de pé a vertical. Cada clique troca o verde.'],
+            ['1', 'Clica nos semáforos', 'Cada cruzamento tem 4 semáforos, um por via. Os que estão de frente mudam juntos. Clicar troca o verde.'],
             ['2', 'Ambulâncias → Hospital', 'Abre caminho à ambulância (linha vermelha) até entrar no hospital.'],
             ['3', 'Elétricos → Posto', 'Escolhe o posto no painel (★ = melhor em tempo e custo) e confirma. Linha azul até à baía.'],
             ['4', 'Corre contra o relógio', 'Começas com 40 s. Cada entrega dá +10 s. Se o tempo acabar, o jogo termina.']
