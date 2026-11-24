@@ -111,14 +111,14 @@ export default class Grafo {
     // virando à esquerda. Calcula as duas (Dijkstra) e fica com a mais curta.
     caminhoDestino(origem, dest, k, custo) {
         const op1 = this.entrada(origem, dest.a, dest.b, dest.corte, dest.baias, k, custo);
-        const op2 = this.entrada(origem, dest.b, dest.a, dest.corteInv, dest.baiasInv, k, custo);
+        const op2 = this.entrada(origem, dest.b, dest.a, dest.corteInv, dest.baiasInv, k, custo, true);
         if (!op1) return op2;
         if (!op2) return op1;
         return op2.tempo < op1.tempo ? op2 : op1;
     }
 
     // chega a 'de' sem passar por 'para', segue pela aresta de->para e, no ponto de corte, entra na baía k
-    entrada(origem, de, para, corteDef, baias, k, custo) {
+    entrada(origem, de, para, corteDef, baias, k, custo, inv = false) {
         const r = this.rota(origem, de, custo, para);
         if (!r) return null;
         const cam = this.caminho([...r.ids, para]);
@@ -139,6 +139,10 @@ export default class Grafo {
         // tempo = comprimento real do percurso (inclui o troço até à baía)
         let comp = 0;
         for (let i = 1; i < pontos.length; i++) comp += Math.hypot(pontos[i].x - pontos[i - 1].x, pontos[i].y - pontos[i - 1].y);
-        return { pontos, idxMeta: pontos.length - 1, ids: r.ids, nodoIdx, tempo: comp / 60 };
+        // viragem à esquerda: o veículo atravessa a faixa do sentido contrário e tem de lhe dar prioridade.
+        // cruza = troço da travessia (índices dos pontos), ponto onde cruza essa faixa e sentido dessa faixa
+        const b0 = corte.i + 1;
+        const cruza = inv ? { de: b0 + 1, ate: b0 + 2, x: baia[3].x, y: baia[3].y, dir: this.direcao(para, de) } : null;
+        return { pontos, idxMeta: pontos.length - 1, ids: r.ids, nodoIdx, tempo: comp / 60, cruza };
     }
 }

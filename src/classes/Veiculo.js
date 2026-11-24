@@ -26,6 +26,7 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         this.idxMeta = caminho.idxMeta;
         this.ids = caminho.ids;           // nós da rota (o DSS usa-os para saber por onde a ambulância vai passar)
         this.nodoIdx = caminho.nodoIdx;
+        this.cruza = caminho.cruza || null;
         this.idx = 1;
         this.metaFeita = false;
         this.parar = false;               // pedido de paragem (semáforo)
@@ -128,6 +129,7 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
 
     // Define uma nova rota (usado pelo EV depois de escolher o posto).
     novaRota(caminho) {
+        this.cruza = caminho.cruza || null;
         this.pontos = caminho.pontos;
         this.idxMeta = caminho.idxMeta;
         this.ids = caminho.ids;

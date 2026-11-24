@@ -19,7 +19,7 @@ Relógio global: começa em 40 s; cada entrega dá até +10 s (+9 no nível 2, +
 Os mapas (assets/img/mapa1-3.png) e a geometria do hospital e dos postos (assets/data/niveis.json) foram gerados por código.
 
 ## Controlos
-- Rato / toque: clicar num dos 4 semáforos de um cruzamento troca o verde; botões do painel; cartões e etiquetas dos postos.
+- Rato / toque: cada cruzamento tem 4 semáforos independentes (um por via); clicar num troca só esse (verde/vermelho). Para não haver choques, o primeiro carro a entrar reserva o cruzamento e quem vem de um sentido que o cruza espera; botões do painel; cartões e etiquetas dos postos.
 - Teclado: `A` aceitar sugestão · `I` ignorar · `1`–`4` escolher posto · `Espaço` confirmar posto · `P`/`Esc` pausa · `Enter` no menu começa o jogo.
 - O nível 1 tem um tutorial (seta) nas primeiras jogadas. Top 5 de pontuações com nome, guardado no browser.
 

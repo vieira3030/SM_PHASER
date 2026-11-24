@@ -9,8 +9,8 @@ export default class MotorDSS {
 
     // ---------- Conceito 1: motor de regras para semáforos ----------
     // Para cada cruzamento mede o eixo que está vermelho e aplica três regras SE–ENTÃO:
-    //   R1 (ALTA)  SE uma ambulância se aproxima pelo eixo vermelho e o cruzamento está na sua rota
-    //              ENTÃO dar verde a esse eixo.
+    //   R1 (ALTA)  SE uma ambulância se aproxima de um semáforo vermelho e o cruzamento está na sua rota
+    //              ENTÃO dar-lhe verde.
     //   R2 (MÉDIA) SE há 4 ou mais carros parados no eixo vermelho e mais 3 do que no eixo verde
     //              ENTÃO trocar.
     //   R3 (BAIXA) SE há carros à espera há mais de 14 s ENTÃO trocar.
@@ -42,30 +42,31 @@ export default class MotorDSS {
         let melhor = null;
         for (const s of semaforos) {
             if (ignorados[s.nome] && ignorados[s.nome] > performance.now()) continue;
-            const eixoVermelho = outroEixo(s.eixo);
-            const a = MotorDSS.medir(s, eixoVermelho, veiculos);   // eixo que está a esperar
-            const b = MotorDSS.medir(s, s.eixo, veiculos);         // eixo que tem verde
-            const candidatos = [];
+            // cada semáforo é independente: avalia cada eixo que tenha pelo menos um vermelho
+            for (const eixoVermelho of ['H', 'V']) {
+                if (s.verde(eixoVermelho)) continue;
+                const a = MotorDSS.medir(s, eixoVermelho, veiculos);             // eixo que está a esperar
+                const b = MotorDSS.medir(s, outroEixo(eixoVermelho), veiculos);  // o outro eixo
+                const candidatos = [];
 
-            // R1: SE há ambulância a aproximar-se do eixo vermelho ENTÃO dar verde a esse eixo (prioridade ALTA)
-            if (a.amb && !(b.amb && b.amb.dist < a.amb.dist)) {
-                const eta = Math.max(1, Math.round(a.amb.dist / VEL_AMB));
-                adicionar(candidatos, 100 + (260 - a.amb.dist) / 4, 'ALTA',
-                    `Ambulância a chegar em ~${eta}s ao eixo bloqueado`);
-            }
-            // R2: SE a fila no eixo vermelho >= 4 E excede em 3+ a do eixo verde ENTÃO alternar (MÉDIA)
-            if (a.fila >= 4 && a.fila >= b.fila + 3) {
-                adicionar(candidatos, 40 + 6 * a.fila - 4 * b.fila, 'MÉDIA',
-                    `${a.fila} veículos parados contra ${b.fila} no eixo com verde`);
-            }
-            // R3: SE a espera máxima no eixo vermelho > 14 s ENTÃO alternar (BAIXA)
-            if (a.esperaMax > 14 && a.fila >= 2) {
-                adicionar(candidatos, 30 + a.esperaMax, 'BAIXA',
-                    `Há veículos à espera há ${Math.round(a.esperaMax)}s`);
-            }
-            for (const c of candidatos) {
-                if (!melhor || c.score > melhor.score) {
-                    melhor = { sem: s, eixo: eixoVermelho, ...c };
+                // R1: SE uma ambulância se aproxima por um semáforo vermelho ENTÃO dar-lhe verde (ALTA)
+                if (a.amb && !s.verdeDir(a.amb.v.dir) && !(b.amb && b.amb.dist < a.amb.dist)) {
+                    const eta = Math.max(1, Math.round(a.amb.dist / VEL_AMB));
+                    adicionar(candidatos, 100 + (260 - a.amb.dist) / 4, 'ALTA',
+                        `Ambulância a chegar em ~${eta}s a um semáforo vermelho`, a.amb.v.dir);
+                }
+                // R2: SE a fila no eixo vermelho >= 4 E excede em 3+ a do outro eixo ENTÃO dar verde (MÉDIA)
+                if (a.fila >= 4 && a.fila >= b.fila + 3) {
+                    adicionar(candidatos, 40 + 6 * a.fila - 4 * b.fila, 'MÉDIA',
+                        `${a.fila} veículos parados contra ${b.fila} no outro sentido`);
+                }
+                // R3: SE a espera máxima no eixo vermelho > 14 s ENTÃO dar verde (BAIXA)
+                if (a.esperaMax > 14 && a.fila >= 2) {
+                    adicionar(candidatos, 30 + a.esperaMax, 'BAIXA',
+                        `Há veículos à espera há ${Math.round(a.esperaMax)}s`);
+                }
+                for (const c of candidatos) {
+                    if (!melhor || c.score > melhor.score) melhor = { sem: s, eixo: eixoVermelho, ...c };
                 }
             }
         }
@@ -106,6 +107,6 @@ export default class MotorDSS {
     }
 }
 
-function adicionar(arr, score, prioridade, motivo) {
-    arr.push({ score, prioridade, motivo });
+function adicionar(arr, score, prioridade, motivo, dir = null) {
+    arr.push({ score, prioridade, motivo, dir });
 }

@@ -1,4 +1,4 @@
-import { LARGURA, ALTURA, MAPA_L, DIST_PARAGEM, COR, FONTE, eixoDe, outroEixo, CONSUMO_BATERIA, VETOR } from '../classes/Constantes.js';
+import { LARGURA, ALTURA, MAPA_L, DIST_PARAGEM, COR, FONTE, eixoDe, CONSUMO_BATERIA, VETOR } from '../classes/Constantes.js';
 import Grafo from '../classes/Grafo.js';
 import Semaforo from '../classes/Semaforo.js';
 import Veiculo from '../classes/Veiculo.js';
@@ -96,7 +96,8 @@ export default class JogoScene extends Phaser.Scene {
             this.seta.setVisible(true).setPosition(this.btnConfirmar.x, this.btnConfirmar.y - 16);
             this.setaTxt.setText('Escolhe o posto e confirma');
         } else if (this.rec) {
-            const [px, py] = this.rec.sem.cabecas.find(c => c[2] === this.rec.eixo);
+            const r = this.rec, cab = r.dir ? r.sem.cabeca(r.dir) : (r.sem.cabecas.find(c => c[2] === r.eixo && !r.sem.verdeDir(c[3])) || r.sem.cabecas.find(c => c[2] === r.eixo));
+            const [px, py] = cab;
             this.seta.setVisible(true).setPosition(px, py - 16);
             this.setaTxt.setText('Clica aqui');
         } else this.seta.setVisible(false);
@@ -126,7 +127,7 @@ export default class JogoScene extends Phaser.Scene {
         linhas.forEach((y, r) => colunas.forEach((x, c) => {
             const s = new Semaforo(this, `S${this.semaforos.length + 1}`, x, y);
             s.no = `I${r}${c}`;
-            s.aoClicar(() => this.cliqueSemaforo(s));
+            s.aoClicar((dir) => this.cliqueSemaforo(s, dir));
             this.semaforos.push(s);
             this.semPorNo[s.no] = s;
         }));
@@ -158,13 +159,33 @@ export default class JogoScene extends Phaser.Scene {
             return this.grafo.direcao(c.ids[i - 1], s.no) !== this.grafo.direcao(s.no, c.ids[i + 1]);
         };
         const oposta = { N: 'S', S: 'N', E: 'W', W: 'E' };
-        for (const c of this.lista) {
-            if (c === v || c.fim || Math.abs(c.x - s.x) > DENTRO || Math.abs(c.y - s.y) > DENTRO) continue;
+        // carros dentro do cruzamento + carros que já têm a passagem reservada (vão entrar agora)
+        const perto = this.lista.filter(c => !c.fim && Math.abs(c.x - s.x) <= DENTRO && Math.abs(c.y - s.y) <= DENTRO);
+        for (const c of new Set([...perto, ...s.liberados])) {
+            if (c === v || !c.active || c.fim) continue;
             if (c.dir === v.dir) continue;
             if (c.dir === oposta[v.dir] && !virar(v) && !virar(c)) continue;
             return true;
         }
         return false;
+    }
+
+    // índice (na rota) do próximo cruzamento que o veículo ainda não passou
+    proximoNo(v) {
+        const j = v.nodoIdx[Math.min(v.idx, v.nodoIdx.length - 1)] - 1;
+        return j >= 1 && j < v.ids.length ? j : -1;
+    }
+
+    // liberta as reservas de quem já saiu do cruzamento
+    limparReservas() {
+        for (const s of this.semaforos) {
+            for (const c of s.liberados) {
+                const j = c.active && !c.fim ? this.proximoNo(c) : -1;
+                if (j < 0 || c.ids[j] !== s.no) {
+                    if (!c.active || c.fim || Math.abs(c.x - s.x) > DENTRO || Math.abs(c.y - s.y) > DENTRO) s.liberados.delete(c);
+                }
+            }
+        }
     }
 
     // Velocidade máxima permitida pelo próximo semáforo da rota: com vermelho o carro trava de forma
@@ -174,24 +195,30 @@ export default class JogoScene extends Phaser.Scene {
     // Assim o carro chega ao ponto de paragem com velocidade 0. Com verde (e sem conflito) não há limite.
     limiteSemaforo(v) {
         if (v.fim || v.estado === 'ESCOLHA') return Infinity;
-        const j = v.nodoIdx[Math.min(v.idx, v.nodoIdx.length - 1)] - 1;
-        if (j < 1 || j >= v.ids.length) return Infinity;
+        const j = this.proximoNo(v);
+        if (j < 0) return Infinity;
         const no = v.ids[j], s = this.semPorNo[no];
         if (!s) return Infinity;
         const dir = this.grafo.direcao(v.ids[j - 1], no), [ux, uy] = VETOR[dir];
         const dist = (s.x - ux * DIST_PARAGEM - v.x) * ux + (s.y - uy * DIST_PARAGEM - v.y) * uy;
         if (dist < -21 || dist > 130) return Infinity;   // já dentro do cruzamento (segue) ou ainda longe
-        if (s.verde(eixoDe(dir)) && !this.conflito(v, s)) return Infinity;
+        // verde e sem conflito: segue; perto da linha fica com a passagem reservada (os outros esperam)
+        if (s.verdeDir(dir) && !this.conflito(v, s)) { if (dist < 15) s.liberados.add(v); return Infinity; }
+        s.liberados.delete(v);
         return dist <= 0 ? 0 : Math.sqrt(2 * 300 * dist);  // vermelho: trava até à linha
     }
 
-    cliqueSemaforo(s) {
+    // clicar num semáforo troca só esse (verde <-> vermelho)
+    cliqueSemaforo(s, dir) {
         if (this.pausado) return;
-        if (this.rec && this.rec.sem === s && outroEixo(s.eixo) === this.rec.eixo) {
-            this.estat.aceites++; this.pontos += 5; this.rec = null; s.destacar(false); this.passosTutorial++;
-        }
-        s.alternar();
+        s.alternarDir(dir);
         Som.tocar('semaforo');
+        const r = this.rec;
+        if (r && r.sem === s && eixoDe(dir) === r.eixo && s.verdeDir(dir) && (!r.dir || r.dir === dir)) {
+            this.estat.aceites++; this.pontos += 5; this.passosTutorial++;
+            this.rec = null; s.destacar(false);
+            this.mostrarRec();
+        }
     }
 
     // ------------------------------------------------------------ painel
@@ -326,11 +353,11 @@ export default class JogoScene extends Phaser.Scene {
 
     avaliarDSS() {
         const nova = MotorDSS.avaliarSemaforos(this.semaforos, this.lista.filter(v => !v.fim), this.ignorados);
-        const mudou = (!nova && this.rec) || (nova && (!this.rec || this.rec.sem !== nova.sem || this.rec.eixo !== nova.eixo));
+        const mudou = (!nova && this.rec) || (nova && (!this.rec || this.rec.sem !== nova.sem || this.rec.eixo !== nova.eixo || this.rec.dir !== nova.dir));
         if (mudou) {
             this.semaforos.forEach(s => s.destacar(false));
             this.rec = nova;
-            if (nova) { nova.sem.destacar(true, nova.eixo); if (nova.prioridade === 'ALTA') Som.tocar('alerta_ev', 0.8); }
+            if (nova) { nova.sem.destacar(true, nova.eixo, nova.dir); if (nova.prioridade === 'ALTA') Som.tocar('alerta_ev', 0.8); }
         } else if (nova && this.rec) { this.rec.motivo = nova.motivo; this.rec.prioridade = nova.prioridade; }
         this.mostrarRec();
     }
@@ -515,7 +542,7 @@ export default class JogoScene extends Phaser.Scene {
             if (it === melhor) this.estat.aceites++; else this.estat.ignoradas++;
         }
         Som.tocar('aceitar');
-        this.toast(auto ? `Sem decisão: segue para o posto ${posto.id}` : `Posto ${posto.id}: ${ev.eficiencia}% da melhor opção`, '#bfe9ff');
+        if (auto) this.toast(`Sem decisão: segue para o posto ${posto.id}`, '#bfe9ff');
         this.previa = null;
         this.atualizarPostos();
     }
@@ -645,6 +672,21 @@ export default class JogoScene extends Phaser.Scene {
         }
     }
 
+    // Viragem à esquerda para um destino: antes de atravessar a faixa do sentido contrário, o veículo espera
+    // enquanto vier alguém nessa faixa (a menos de 75 px do ponto onde vai cruzar).
+    darPrioridade() {
+        for (const v of this.lista) {
+            const c = v.cruza;
+            if (!c || v.fim || v.idx < c.de || v.idx > c.ate) continue;
+            const [ux, uy] = VETOR[c.dir];
+            for (const o of this.lista) {
+                if (o === v || o.fim || o.dir !== c.dir) continue;
+                const along = (c.x - o.x) * ux + (c.y - o.y) * uy, lat = Math.abs((c.x - o.x) * uy - (c.y - o.y) * ux);
+                if (lat < 10 && along > -16 && along < 75) { v.bloqueado = true; break; }
+            }
+        }
+    }
+
     // distância de segurança: trava se houver um veículo à frente na mesma faixa
     distanciaSegura() {
         for (const v of this.lista) {
@@ -675,6 +717,8 @@ export default class JogoScene extends Phaser.Scene {
 
         this.semaforos.forEach(s => s.update(dt));
         this.distanciaSegura();
+        this.darPrioridade();
+        this.limparReservas();
         for (const v of this.lista) v.vMax = this.limiteSemaforo(v);
         [...this.lista].forEach(v => { if (v.active) v.atualizar(dt); });
 
