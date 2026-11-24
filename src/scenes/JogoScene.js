@@ -282,19 +282,8 @@ export default class JogoScene extends Phaser.Scene {
         this.dssMotivo.setText(r.motivo).setY(this.dssAcao.y + this.dssAcao.height + 2);
     }
 
-    // ------------------------------------------------------------ custos das rotas (Dijkstra)
-    custoDinamico = (a, b) => {
-        const A = this.grafo.nos[a], B = this.grafo.nos[b];
-        const dir = this.grafo.direcao(a, b);
-        let c = Math.hypot(B.x - A.x, B.y - A.y) / 70;
-        for (const v of this.lista) {
-            if (v.dir !== dir || v.v > 8 || v.fim) continue;
-            if (v.x >= Math.min(A.x, B.x) - 20 && v.x <= Math.max(A.x, B.x) + 20 && v.y >= Math.min(A.y, B.y) - 20 && v.y <= Math.max(A.y, B.y) + 20) c += 1.0;
-        }
-        const s = this.semPorNo[b];
-        if (s && !s.verde(eixoDe(dir))) c += 3;
-        return c;
-    };
+    // ------------------------------------------------------------ custo das rotas (Dijkstra: caminho mais curto)
+    // custo de uma aresta = tempo de a percorrer (distância / velocidade), por isso a rota é sempre a mais curta
     custoEstatico = (a, b) => {
         const A = this.grafo.nos[a], B = this.grafo.nos[b];
         return Math.hypot(B.x - A.x, B.y - A.y) / 60;
@@ -346,7 +335,7 @@ export default class JogoScene extends Phaser.Scene {
         const H = this.destinos.H;
         for (let k = 0; k < 4; k++) {
             const o = Phaser.Math.RND.pick(this.grafo.bordas());
-            const cam = this.grafo.caminhoDestino(o, H, H.prox, this.custoDinamico);
+            const cam = this.grafo.caminhoDestino(o, H, H.prox, this.custoEstatico);
             if (!cam) continue;
             const v = this.adicionar('AMB', cam, o);
             if (!v) continue;
@@ -391,7 +380,7 @@ export default class JogoScene extends Phaser.Scene {
     evEmEscolha() { return this.lista.find(v => v.tipo === 'EV' && v.estado === 'ESCOLHA'); }
 
     tempoAte(ev, posto) {
-        const c = this.grafo.caminhoDestino(ev.entrada, posto.dest, posto.dest.prox, this.custoDinamico);
+        const c = this.grafo.caminhoDestino(ev.entrada, posto.dest, posto.dest.prox, this.custoEstatico);
         return c ? c.tempo : 999;
     }
 
@@ -445,7 +434,7 @@ export default class JogoScene extends Phaser.Scene {
         if (!ev || this.pausado) return;
         const { lista } = this.classificar(ev);
         const it = lista.find(l => l.posto === posto), melhor = lista[0];
-        const cam = this.grafo.caminhoDestino(ev.entrada, posto.dest, posto.dest.prox, this.custoDinamico);
+        const cam = this.grafo.caminhoDestino(ev.entrada, posto.dest, posto.dest.prox, this.custoEstatico);
         if (!cam) return;
         posto.dest.prox++;
         ev.novaRota(cam);
@@ -579,7 +568,7 @@ export default class JogoScene extends Phaser.Scene {
             if (v.tipo === 'NORMAL' || v.fim) continue;
             if (v.estado === 'ESCOLHA') {
                 if (!this.previa) continue;
-                const cam = this.grafo.caminhoDestino(v.entrada, this.previa.dest, this.previa.dest.prox, this.custoDinamico);
+                const cam = this.grafo.caminhoDestino(v.entrada, this.previa.dest, this.previa.dest.prox, this.custoEstatico);
                 if (cam) linha([{ x: v.x, y: v.y }, ...cam.pontos.slice(2)], 0xe9b949);
             } else {
                 linha([{ x: v.x, y: v.y }, ...v.pontos.slice(v.idx, v.idxMeta + 1)], v.tipo === 'AMB' ? 0xd0453a : 0x3b8ec2);

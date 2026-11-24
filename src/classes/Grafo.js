@@ -104,14 +104,23 @@ export default class Grafo {
         return { pontos: pts, idxMeta, ids, nodoIdx };
     }
 
-    // Rota até um destino (hospital ou posto). O destino fica junto à aresta a->b: o veículo chega a 'a'
-    // sem passar por 'b', segue pela aresta a->b e, a meio do quarteirão, vira à direita para a baía k.
+    // Rota até um destino (hospital ou posto). O destino fica a meio da aresta a-b.
+    // Há duas formas de lá chegar: pela faixa a->b virando à direita para a baía, ou pela faixa b->a
+    // virando à esquerda. Calcula as duas (Dijkstra) e fica com a mais curta.
     caminhoDestino(origem, dest, k, custo) {
-        const r = this.rota(origem, dest.a, custo, dest.b);
+        const op1 = this.entrada(origem, dest.a, dest.b, dest.corte, dest.baias, k, custo);
+        const op2 = this.entrada(origem, dest.b, dest.a, dest.corteInv, dest.baiasInv, k, custo);
+        if (!op1) return op2;
+        if (!op2) return op1;
+        return op2.tempo < op1.tempo ? op2 : op1;
+    }
+
+    // chega a 'de' sem passar por 'para', segue pela aresta de->para e, no ponto de corte, entra na baía k
+    entrada(origem, de, para, corteDef, baias, k, custo) {
+        const r = this.rota(origem, de, custo, para);
         if (!r) return null;
-        const ids = [...r.ids, dest.b];
-        const cam = this.caminho(ids);
-        const { eixo, valor } = dest.corte;
+        const cam = this.caminho([...r.ids, para]);
+        const { eixo, valor } = corteDef;
         let corte = null;
         for (let i = cam.pontos.length - 1; i >= 1 && !corte; i--) {
             const p = cam.pontos[i - 1], q = cam.pontos[i];
@@ -121,10 +130,13 @@ export default class Grafo {
             }
         }
         if (!corte) return null;
-        const baia = dest.baias[k % dest.baias.length].map(([x, y]) => ({ x, y }));
+        const baia = baias[k % baias.length].map(([x, y]) => ({ x, y }));
         const pontos = [...cam.pontos.slice(0, corte.i), corte.p, ...baia];
-        const n = r.ids.length;     // o nó b não é atravessado: a rota termina antes dele
+        const n = r.ids.length;     // o nó 'para' não é atravessado: a rota termina antes dele
         const nodoIdx = [...cam.nodoIdx.slice(0, corte.i).map(v => Math.min(v, n)), ...Array(baia.length + 1).fill(n + 1)];
-        return { pontos, idxMeta: pontos.length - 1, ids: r.ids, nodoIdx, tempo: r.tempo + 1.5 };
+        // tempo = comprimento real do percurso (inclui o troço até à baía)
+        let comp = 0;
+        for (let i = 1; i < pontos.length; i++) comp += Math.hypot(pontos[i].x - pontos[i - 1].x, pontos[i].y - pontos[i - 1].y);
+        return { pontos, idxMeta: pontos.length - 1, ids: r.ids, nodoIdx, tempo: comp / 60 };
     }
 }

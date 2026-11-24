@@ -21,7 +21,7 @@ Os mapas (assets/img/mapa1-3.png) e a geometria do hospital e dos postos (assets
 ## Conceitos técnicos (apoio à decisão)
 - **Motor de regras SE–ENTÃO com explicação** (`MotorDSS.avaliarSemaforos`): ambulância, fila longa, espera longa.
 - **Pontuação multicritério ponderada** (`MotorDSS.classificarPostos`): tempo total (viagem + espera + carga) e custo, com pesos que dependem do nível de bateria.
-- **Dijkstra com custos dinâmicos** (`Grafo.rota`): filas e semáforos vermelhos alteram o custo das ruas.
+- **Dijkstra (caminho mais curto)** (`Grafo.rota`, `Grafo.caminhoDestino`): cada veículo segue a rota mais curta; para entrar num destino o jogo compara a entrada pelos dois sentidos da rua e escolhe a mais curta.
 - Aleatoriedade controlada: intervalos de geração sorteados dentro de limites por nível; ocupação dos postos sorteada; bateria ajustada para o jogo ser justo.
 
 ## Estrutura
