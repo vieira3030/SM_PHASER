@@ -33,7 +33,6 @@ export default class MotorDSS {
     static avaliarSemaforos(semaforos, veiculos, ignorados) {
         let melhor = null;
         for (const s of semaforos) {
-            if (s.fase !== 'VERDE') continue;                 // já em transição
             if (ignorados[s.nome] && ignorados[s.nome] > performance.now()) continue;
             const eixoVermelho = outroEixo(s.eixo);
             const a = MotorDSS.medir(s, eixoVermelho, veiculos);   // eixo que está a esperar

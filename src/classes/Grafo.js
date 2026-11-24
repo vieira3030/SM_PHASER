@@ -4,23 +4,23 @@ import { MAPA_L, ALTURA, FAIXA, VETOR } from './Constantes.js';
 // Usado para calcular rotas (Dijkstra) e os pontos de passagem (waypoints) dos veículos.
 export default class Grafo {
     // colunas/linhas: coordenadas das avenidas do nível (a grelha cresce de nível para nível: 2x2, 3x2, 3x3)
-    constructor(COLUNAS, LINHAS) {
+    constructor(colunas, linhas) {
         this.nos = {};
         this.adj = {};
-        LINHAS.forEach((y, r) => COLUNAS.forEach((x, c) => this.addNo(`I${r}${c}`, x, y, 'I')));
-        LINHAS.forEach((y, r) => {
+        linhas.forEach((y, r) => colunas.forEach((x, c) => this.addNo(`I${r}${c}`, x, y, 'I')));
+        linhas.forEach((y, r) => {
             this.addNo(`W${r}`, 0, y, 'B');
             this.addNo(`E${r}`, MAPA_L, y, 'B');
             this.ligar(`W${r}`, `I${r}0`);
-            for (let c = 0; c < COLUNAS.length - 1; c++) this.ligar(`I${r}${c}`, `I${r}${c + 1}`);
-            this.ligar(`I${r}${COLUNAS.length - 1}`, `E${r}`);
+            for (let c = 0; c < colunas.length - 1; c++) this.ligar(`I${r}${c}`, `I${r}${c + 1}`);
+            this.ligar(`I${r}${colunas.length - 1}`, `E${r}`);
         });
-        COLUNAS.forEach((x, c) => {
+        colunas.forEach((x, c) => {
             this.addNo(`N${c}`, x, 0, 'B');
             this.addNo(`S${c}`, x, ALTURA, 'B');
             this.ligar(`N${c}`, `I0${c}`);
-            for (let r = 0; r < LINHAS.length - 1; r++) this.ligar(`I${r}${c}`, `I${r + 1}${c}`);
-            this.ligar(`I${LINHAS.length - 1}${c}`, `S${c}`);
+            for (let r = 0; r < linhas.length - 1; r++) this.ligar(`I${r}${c}`, `I${r + 1}${c}`);
+            this.ligar(`I${linhas.length - 1}${c}`, `S${c}`);
         });
     }
 

@@ -9,8 +9,7 @@ import Som from '../classes/Som.js';
 import { criarBotao, cartao } from '../classes/UI.js';
 
 const TX = '#e8e6df';
-const ESCOLHA_MAX = 15;
-const AMARELO = 1.6;      // duração do amarelo (igual à do Semaforo)   // segundos para escolher o posto (depois segue para o selecionado)
+const ESCOLHA_MAX = 15;   // segundos para escolher o posto (depois segue para o selecionado)
 
 export default class JogoScene extends Phaser.Scene {
     constructor() { super('JogoScene'); }
@@ -106,8 +105,8 @@ export default class JogoScene extends Phaser.Scene {
         return false;
     }
 
-    // Velocidade máxima permitida pelo próximo semáforo da rota: com vermelho (ou amarelo, se ainda
-    // der para parar) o carro trava de forma progressiva até à linha de paragem. Nunca passa o vermelho.
+    // Velocidade máxima permitida pelo próximo semáforo da rota: com vermelho o carro trava de forma
+    // progressiva até à linha de paragem. Só segue quem já estava dentro do cruzamento quando mudou.
     limiteSemaforo(v) {
         if (v.fim || v.estado === 'ESCOLHA') return Infinity;
         const j = v.nodoIdx[Math.min(v.idx, v.nodoIdx.length - 1)] - 1;
@@ -116,27 +115,14 @@ export default class JogoScene extends Phaser.Scene {
         if (!s) return Infinity;
         const dir = this.grafo.direcao(v.ids[j - 1], no), [ux, uy] = VETOR[dir];
         const dist = (s.x - ux * DIST_PARAGEM - v.x) * ux + (s.y - uy * DIST_PARAGEM - v.y) * uy;
-        if (dist < -20 || dist > 130) return Infinity;   // já dentro do cruzamento: segue
-        const eixo = eixoDe(dir);
-        if (v.passa === no) {
-            // decidiu passar no amarelo; se entretanto ficou retido e ainda consegue parar, volta a parar
-            const vermelho = s.fase !== 'AMARELO' && !s.verde(eixo);
-            if (!(vermelho && dist > 2 && (v.v * v.v) / (2 * 700) < dist)) return Infinity;
-            v.passa = null;
-        }
-        if (s.verde(eixo) && !this.conflito(v, s)) return Infinity;
-        // amarelo: se já não consegue parar com segurança, passa (como na vida real)
-        if (s.fase === 'AMARELO' && s.eixo === eixo && !v.bloqueado) {
-            const resta = AMARELO - s.t;
-            if (v.v > 1 && (dist + 34) / v.v < resta) { v.passa = no; return Infinity; }   // atravessa antes do vermelho
-            if (v.v > 20 && dist < (v.v * v.v) / (2 * 700)) { v.passa = no; return Infinity; }          // já não consegue parar
-        }
-        return dist <= 0 ? 0 : Math.sqrt(2 * 300 * dist);
+        if (dist < -20 || dist > 130) return Infinity;   // já dentro do cruzamento (segue) ou ainda longe
+        if (s.verde(eixoDe(dir)) && !this.conflito(v, s)) return Infinity;
+        return dist <= 0 ? 0 : Math.sqrt(2 * 300 * dist);  // vermelho: trava até à linha
     }
 
     cliqueSemaforo(s) {
         if (this.pausado) return;
-        if (this.rec && this.rec.sem === s && outroEixo(s.eixo) === this.rec.eixo && s.fase === 'VERDE') {
+        if (this.rec && this.rec.sem === s && outroEixo(s.eixo) === this.rec.eixo) {
             this.estat.aceites++; this.pontos += 5; this.rec = null; s.destacar(false);
         }
         s.alternar();
@@ -200,7 +186,7 @@ export default class JogoScene extends Phaser.Scene {
         this.btnConfirmar = criarBotao(this, X + 100, 296 + this.postos.length * 38 + 2, 184, 26, 'CONFIRMAR', () => this.confirmarPosto(),
             { cor: COR.terracota, corHover: COR.terracotaEsc, fonte: '12px' }).setDepth(14);
 
-        this.dicaTxt = this.add.text(MAPA_L / 2, 58, '', {
+        this.dicaTxt = this.add.text(MAPA_L / 2, ALTURA - 16, '', {
             fontFamily: FONTE, fontSize: '13px', color: '#fffdf6', fontStyle: 'bold', backgroundColor: '#12151bdd', padding: { x: 10, y: 4 }
         }).setOrigin(0.5).setDepth(30).setAlpha(0);
         this.toastTxt = this.add.text(MAPA_L / 2, 24, '', {
@@ -277,7 +263,7 @@ export default class JogoScene extends Phaser.Scene {
         if (mudou) {
             this.semaforos.forEach(s => s.destacar(false));
             this.rec = nova;
-            if (nova) { nova.sem.destacar(true); if (nova.prioridade === 'ALTA') Som.tocar('alerta_ev', 0.8); }
+            if (nova) { nova.sem.destacar(true, nova.eixo); if (nova.prioridade === 'ALTA') Som.tocar('alerta_ev', 0.8); }
         } else if (nova && this.rec) { this.rec.motivo = nova.motivo; this.rec.prioridade = nova.prioridade; }
         this.mostrarRec();
     }
@@ -287,13 +273,13 @@ export default class JogoScene extends Phaser.Scene {
         this.btnAceitar.setVisible(!!r); this.btnIgnorar.setVisible(!!r);
         if (!r) {
             this.dssAcao.setText('Trânsito fluido');
-            this.dssMotivo.setText(`Sem sugestões. A vigiar ${this.semaforos.length} cruzamentos.`);
+            this.dssMotivo.setText(`Sem sugestões. A vigiar ${this.semaforos.length} cruzamentos.`).setY(this.dssAcao.y + this.dssAcao.height + 2);
             this.dssFaixa.setFillStyle(COR.verde);
             return;
         }
         this.dssFaixa.setFillStyle(r.prioridade === 'ALTA' ? COR.vermelho : r.prioridade === 'MÉDIA' ? COR.amarelo : COR.verde);
-        this.dssAcao.setText(`Muda o semáforo que pisca (${r.eixo === 'H' ? '↔' : '↕'})`);
-        this.dssMotivo.setText(r.motivo);
+        this.dssAcao.setText(`Clica no semáforo assinalado`);
+        this.dssMotivo.setText(r.motivo).setY(this.dssAcao.y + this.dssAcao.height + 2);
     }
 
     // ------------------------------------------------------------ custos das rotas (Dijkstra)
@@ -451,7 +437,7 @@ export default class JogoScene extends Phaser.Scene {
             c.setAlpha(1);
             c.fundo.setStrokeStyle(sel ? 3 : 2, sel ? COR.amarelo : COR.papelEscuro);
         });
-        this.postos.forEach(p => this.marcas[p.id].setAlpha(this.previa === p ? 1 : 0.6).setScale(this.previa === p ? 1.15 : 1));
+        this.postos.forEach(p => this.marcas[p.id].setAlpha(this.previa === p ? 1 : 0.8).setScale(this.previa === p ? 1.15 : 1));
     }
 
     escolherPosto(posto, auto = false) {

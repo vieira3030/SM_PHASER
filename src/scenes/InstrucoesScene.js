@@ -27,6 +27,6 @@ export default class InstrucoesScene extends Phaser.Scene {
         this.add.text(LARGURA / 2, 396, '3 níveis: a cidade cresce (2x2, 3x2, 3x3) e há mais missões. O Assistente sugere, tu decides.', { fontFamily: FONTE, fontSize: '12px', color: COR.cinzaTxt }).setOrigin(0.5);
 
         criarBotao(this, LARGURA / 2 - 105, 428, 190, 34, 'VOLTAR', () => this.scene.start('MenuScene'), { cor: COR.papelEscuro, corHover: 0x4a5260, fonte: '15px' });
-        criarBotao(this, LARGURA / 2 + 105, 428, 190, 34, 'JOGAR', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0, vidas: 3 }), { cor: COR.verde, corHover: 0x2d8a5e, fonte: '15px' });
+        criarBotao(this, LARGURA / 2 + 105, 428, 190, 34, 'JOGAR', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0 }), { cor: COR.verde, corHover: 0x2d8a5e, fonte: '15px' });
     }
 }

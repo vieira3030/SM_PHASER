@@ -25,7 +25,7 @@ export default class MenuScene extends Phaser.Scene {
         this.add.text(LARGURA / 2, 182, 'Smart Traffic Control', { fontFamily: 'Georgia, serif', fontSize: '36px', color: COR.tintaTxt, fontStyle: 'bold' }).setOrigin(0.5);
         this.add.text(LARGURA / 2, 224, 'Controla os semáforos, dá passagem às ambulâncias\ne encontra o melhor posto para os carros elétricos.', { fontFamily: FONTE, fontSize: '14px', color: COR.cinzaTxt, align: 'center' }).setOrigin(0.5);
 
-        criarBotao(this, LARGURA / 2 - 105, 282, 200, 44, 'JOGAR', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0, vidas: 3 }), { cor: COR.verde, corHover: 0x2d8a5e });
+        criarBotao(this, LARGURA / 2 - 105, 282, 200, 44, 'JOGAR', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0 }), { cor: COR.verde, corHover: 0x2d8a5e });
         criarBotao(this, LARGURA / 2 + 105, 282, 200, 44, 'COMO JOGAR', () => this.scene.start('InstrucoesScene'), { cor: COR.papelEscuro, corHover: 0x4a5260 });
 
         const rotulo = (n, v) => `${n}: ${Math.round(v * 100)}%`;

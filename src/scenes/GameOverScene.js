@@ -38,7 +38,7 @@ export default class GameOverScene extends Phaser.Scene {
             this.add.text(600, y, b, { fontFamily: FONTE, fontSize: '16px', color: COR.tintaTxt, fontStyle: 'bold' }).setOrigin(1, 0);
             this.add.rectangle(LARGURA / 2, y + 27, 400, 1, 0x4a5260).setOrigin(0.5);
         });
-        criarBotao(this, LARGURA / 2 - 100, 408, 190, 44, 'JOGAR OUTRA VEZ', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0, vidas: 3 }), { cor: COR.verde, corHover: 0x2d8a5e, fonte: '16px' });
+        criarBotao(this, LARGURA / 2 - 100, 408, 190, 44, 'JOGAR OUTRA VEZ', () => this.scene.start('JogoScene', { nivel: 1, pontos: 0 }), { cor: COR.verde, corHover: 0x2d8a5e, fonte: '16px' });
         criarBotao(this, LARGURA / 2 + 100, 408, 190, 44, 'MENU', () => this.scene.start('MenuScene'), { cor: COR.papelEscuro, corHover: 0x4a5260, txt: COR.tintaTxt, fonte: '16px' });
     }
 }

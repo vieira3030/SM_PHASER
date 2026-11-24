@@ -34,8 +34,3 @@ export function cartao(scene, x, y, w, h, opcoes = {}) {
     return g;
 }
 
-export function titulo(scene, x, y, texto, tam = 44, cor = '#fffdf6') {
-    return scene.add.text(x, y, texto, {
-        fontFamily: 'Georgia, "Times New Roman", serif', fontSize: tam + 'px', color: cor, fontStyle: 'bold', stroke: '#2b2d42', strokeThickness: 6
-    }).setOrigin(0.5);
-}

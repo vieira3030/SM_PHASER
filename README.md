@@ -35,4 +35,4 @@ Os locais são reais (Viana do Castelo): ESE-IPVC, Continente, Leroy Merlin, Ár
 ## Declaração de uso de IA
 Imagens (mapa, carros, ícones) e sons foram gerados por código com assistência de IA (Claude). O código do jogo foi desenvolvido com assistência de IA e deve ser estudado e compreendido pelo autor.
 
-Autor: André Alves Flores (n.º 33117)
+Autor: Rodrigo Miguel Castro Vieira (n.º 33445)

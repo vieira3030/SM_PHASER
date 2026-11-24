@@ -3,10 +3,7 @@ export const LARGURA = 800;
 export const ALTURA = 480;
 export const MAPA_L = 600;              // largura da área do mapa (o resto é o painel)
 
-export const COLUNAS = [110, 300, 490]; // x das 3 avenidas verticais (iguais às da imagem do mapa)
-export const LINHAS = [130, 330];       // y das 2 avenidas horizontais
 export const FAIXA = 14;                // distância do centro da estrada ao centro da faixa
-export const MEIA_ESTRADA = 28;
 export const DIST_PARAGEM = 66;         // distância do centro do cruzamento ao ponto onde os carros param
 
 export const VEL_NORMAL = [58, 72];
