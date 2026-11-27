@@ -1,4 +1,4 @@
-import { LARGURA, ALTURA, MAPA_L, DIST_PARAGEM, COR, FONTE, eixoDe, CONSUMO_BATERIA, VETOR } from '../classes/Constantes.js';
+import { LARGURA, ALTURA, MAPA_L, DIST_PARAGEM, COR, FONTE, eixoDe, CONSUMO_BATERIA, VETOR, DIST_SEGURANCA, TEMPO_ESCOLHA, PENAL_BATERIA, PENAL_CONGESTAO } from '../classes/Constantes.js';
 import Grafo from '../classes/Grafo.js';
 import Semaforo from '../classes/Semaforo.js';
 import Veiculo from '../classes/Veiculo.js';
@@ -8,14 +8,17 @@ import { POSTOS, sortearOcupacao, euros } from '../classes/Dados.js';
 import Som from '../classes/Som.js';
 import { criarBotao, cartao, camaraHD } from '../classes/UI.js';
 
-const TX = '#e8e6df';
-const ESCOLHA_MAX = 15;
+const TX = '#e8e6df';                  // cor do texto principal do painel
 // a partir desta distância ao centro, um carro já está "dentro" do cruzamento (segue mesmo com vermelho)
-const DENTRO = DIST_PARAGEM - 21;   // segundos para escolher o posto (depois segue para o selecionado)
+const DENTRO = DIST_PARAGEM - 21;
 
+// Cena principal do jogo: mapa, semáforos, veículos, painel (HUD), Assistente (DSS) e regras do jogo.
+// Recebe { nivel, pontos, tempo, estat } e passa-os ao nível seguinte.
 export default class JogoScene extends Phaser.Scene {
+    // nome da cena usado em this.scene.start('JogoScene')
     constructor() { super('JogoScene'); }
 
+    // dados recebidos ao iniciar a cena (nível atual, pontos, tempo que sobrou e estatísticas)
     init(d) {
         this.nivel = (d && d.nivel) || 1;
         this.pontos = (d && d.pontos) || 0;
@@ -25,6 +28,7 @@ export default class JogoScene extends Phaser.Scene {
         this.inicioNivel = { nivel: this.nivel, pontos: this.pontos, tempo: this.tempo, estat: { ...this.estat } };
     }
 
+    // monta o nível: grafo da cidade, destinos, mapa, semáforos, painel, colisões, teclado e tutorial
     create() {
         camaraHD(this);
         this.cfg = GestorNiveis.obter(this.nivel);
@@ -93,6 +97,7 @@ export default class JogoScene extends Phaser.Scene {
         this.tweens.add({ targets: dentro, y: -8, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
 
+    // mostra a seta do tutorial no semáforo sugerido ou no botão CONFIRMAR (só no nível 1)
     atualizarTutorial() {
         if (this.passosTutorial >= 3) { this.seta.setVisible(false); return; }
         const ev = this.evEmEscolha();
@@ -107,6 +112,7 @@ export default class JogoScene extends Phaser.Scene {
         } else this.seta.setVisible(false);
     }
 
+    // liga/desliga a pausa (P, Esc ou botão ❚❚): para o relógio, as animações e os sons
     alternarPausa() {
         if (this.pausado && !this.emPausa) return;      // intro ou fim de nível: não há pausa
         this.emPausa = !this.emPausa;
@@ -153,6 +159,7 @@ export default class JogoScene extends Phaser.Scene {
         return c;
     }
 
+    // sai da pausa para 'menu' (menu principal) ou para reiniciar o nível atual
     sairPausa(destino) {
         this.time.paused = false; this.tweens.resumeAll(); this.sound.resumeAll();
         this.emPausa = false;
@@ -195,19 +202,31 @@ export default class JogoScene extends Phaser.Scene {
     // ------------------------------------------------------------ semáforos
     // Há conflito se dentro do cruzamento está um carro que atravessa o caminho de v
     conflito(v, s) {
+        // devolve true se a rota de v cruza a do veículo c neste cruzamento
         const virar = (c) => {
             const i = c.ids.indexOf(s.no);
             if (i <= 0 || i >= c.ids.length - 1) return false;
             return this.grafo.direcao(c.ids[i - 1], s.no) !== this.grafo.direcao(s.no, c.ids[i + 1]);
         };
         const oposta = { N: 'S', S: 'N', E: 'W', W: 'E' };
-        // carros dentro do cruzamento + carros que já têm a passagem reservada (vão entrar agora)
+        const cruza = (c) => c.dir !== v.dir && !(c.dir === oposta[v.dir] && !virar(v) && !virar(c));
+        // 1) carros dentro do cruzamento + carros com a passagem reservada (vão entrar agora).
+        //    A ambulância não espera por reservas de outros veículos que ainda não entraram.
         const perto = this.lista.filter(c => !c.fim && Math.abs(c.x - s.x) <= DENTRO && Math.abs(c.y - s.y) <= DENTRO);
-        for (const c of new Set([...perto, ...s.liberados])) {
+        const reservas = v.tipo === 'AMB' ? [] : [...s.liberados];
+        for (const c of new Set([...perto, ...reservas])) {
             if (c === v || !c.active || c.fim) continue;
-            if (c.dir === v.dir) continue;
-            if (c.dir === oposta[v.dir] && !virar(v) && !virar(c)) continue;
-            return true;
+            if (cruza(c)) return true;
+        }
+        // 2) prioridade à ambulância: um carro normal ou elétrico espera se uma ambulância com verde
+        //    está a menos de 90 px de entrar neste cruzamento por um sentido que cruza o seu
+        if (v.tipo !== 'AMB') {
+            for (const a of this.lista) {
+                if (a.tipo !== 'AMB' || a.fim || !cruza(a)) continue;
+                const j = this.proximoNo(a);
+                if (j < 0 || a.ids[j] !== s.no || !s.verdeDir(a.dir)) continue;
+                if (Math.hypot(a.x - s.x, a.y - s.y) < DIST_PARAGEM + 90) return true;
+            }
         }
         return false;
     }
@@ -218,14 +237,16 @@ export default class JogoScene extends Phaser.Scene {
         return j >= 1 && j < v.ids.length ? j : -1;
     }
 
-    // liberta as reservas de quem já saiu do cruzamento
+    // Liberta as reservas de quem já saiu do cruzamento: veículo removido/estacionado, ou já fora da área
+    // do cruzamento e a afastar-se do centro (no sentido em que anda).
     limparReservas() {
         for (const s of this.semaforos) {
             for (const c of s.liberados) {
-                const j = c.active && !c.fim ? this.proximoNo(c) : -1;
-                if (j < 0 || c.ids[j] !== s.no) {
-                    if (!c.active || c.fim || Math.abs(c.x - s.x) > DENTRO || Math.abs(c.y - s.y) > DENTRO) s.liberados.delete(c);
-                }
+                if (!c.active || c.fim) { s.liberados.delete(c); continue; }
+                const fora = Math.abs(c.x - s.x) > DENTRO || Math.abs(c.y - s.y) > DENTRO;
+                const [ux, uy] = VETOR[c.dir];
+                const passou = (c.x - s.x) * ux + (c.y - s.y) * uy > 0;
+                if (fora && passou) s.liberados.delete(c);
             }
         }
     }
@@ -333,6 +354,7 @@ export default class JogoScene extends Phaser.Scene {
         this.atualizarHUD();
     }
 
+    // atualiza o painel: tempo (barra até 60 s), pontos, objetivos e barra de trânsito parado
     atualizarHUD() {
         const t = Math.max(0, this.tempo);
         this.hudTempo.setText(`${Math.ceil(t)} s`).setColor(t > 15 ? TX : '#ff7b6e');
@@ -349,6 +371,7 @@ export default class JogoScene extends Phaser.Scene {
         this.barraCong.setFillStyle(c < 50 ? COR.verde : c < 80 ? COR.amarelo : COR.vermelho);
     }
 
+    // mensagem curta no topo do mapa (desaparece ao fim de ~2 s)
     toast(msg, cor = '#ffffff') {
         this.toastTxt.setText(msg).setColor(cor).setAlpha(1);
         this.tweens.killTweensOf(this.toastTxt);
@@ -362,6 +385,7 @@ export default class JogoScene extends Phaser.Scene {
         this.tweens.add({ targets: t, y: y - 55, alpha: 0, duration: 1400, onComplete: () => t.destroy() });
     }
 
+    // dica no fundo do mapa (desaparece ao fim de ~5 s; não repete a mesma dica seguida)
     dica(msg) {
         if (this.dicaAtual === msg) return;
         this.dicaAtual = msg;
@@ -382,6 +406,7 @@ export default class JogoScene extends Phaser.Scene {
         this.mostrarRec();
     }
 
+    // botão IGNORAR (ou tecla I): esconde a sugestão e não volta a sugerir esse cruzamento durante 9 s
     ignorarRec() {
         const r = this.rec;
         if (!r || this.pausado) return;
@@ -393,6 +418,7 @@ export default class JogoScene extends Phaser.Scene {
         this.mostrarRec();
     }
 
+    // pede ao MotorDSS a melhor sugestão para os semáforos (corre a cada 0,4 s)
     avaliarDSS() {
         const nova = MotorDSS.avaliarSemaforos(this.semaforos, this.lista.filter(v => !v.fim), this.ignorados);
         const mudou = (!nova && this.rec) || (nova && (!this.rec || this.rec.sem !== nova.sem || this.rec.eixo !== nova.eixo || this.rec.dir !== nova.dir));
@@ -404,6 +430,7 @@ export default class JogoScene extends Phaser.Scene {
         this.mostrarRec();
     }
 
+    // mostra a sugestão atual no cartão do Assistente (ou "Trânsito fluido")
     mostrarRec() {
         const r = this.rec;
         this.btnAceitar.setVisible(!!r); this.btnIgnorar.setVisible(!!r);
@@ -428,8 +455,10 @@ export default class JogoScene extends Phaser.Scene {
     // ------------------------------------------------------------ veículos
     livre(p) { return !this.lista.some(v => Math.hypot(v.x - p.x, v.y - p.y) < 64); }
 
+    // entrada do lado oposto do mapa (W0 <-> E0, N1 <-> S1, ...)
     oposto(b) { return ({ W: 'E', E: 'W', N: 'S', S: 'N' })[b[0]] + b.slice(1); }
 
+    // cria um veículo do tipo dado no início do caminho (se o sítio estiver livre) e junta-o à lista
     adicionar(tipo, cam, origem) {
         if (!this.livre(cam.pontos[0])) return null;
         const v = new Veiculo(this, tipo, cam);
@@ -443,6 +472,7 @@ export default class JogoScene extends Phaser.Scene {
         return v;
     }
 
+    // novo carro normal: entra por uma borda e sai, quase sempre, pela borda oposta
     gerarNormal() {
         const bordas = this.grafo.bordas();
         for (let k = 0; k < 4; k++) {
@@ -454,6 +484,7 @@ export default class JogoScene extends Phaser.Scene {
         }
     }
 
+    // número de missões deste tipo ('AMB' ou 'EV') ainda a decorrer
     ativas(tipo) { return this.lista.filter(v => v.tipo === tipo && !v.metaFeita).length; }
 
     // Aleatoriedade controlada: o tipo de missão é sorteado entre os que ainda faltam
@@ -467,10 +498,22 @@ export default class JogoScene extends Phaser.Scene {
         if (amb) this.gerarAmbulancia(); else this.gerarEV();
     }
 
+    // Entrada sorteada para uma nova missão ("saco" baralhado): todas as entradas do mapa saem uma vez,
+    // por ordem aleatória, antes de alguma se repetir; nunca sai a mesma duas vezes seguidas.
+    sortearEntrada() {
+        if (!this.saco || this.saco.length === 0) {
+            this.saco = Phaser.Utils.Array.Shuffle([...this.grafo.bordas()]);
+            if (this.saco.length > 1 && this.saco[this.saco.length - 1] === this.ultimaEntrada) this.saco.unshift(this.saco.pop());
+        }
+        this.ultimaEntrada = this.saco.pop();
+        return this.ultimaEntrada;
+    }
+
+    // nova ambulância: entra por uma borda sorteada e segue a rota mais curta até ao hospital
     gerarAmbulancia() {
         const H = this.destinos.H;
         for (let k = 0; k < 4; k++) {
-            const o = Phaser.Math.RND.pick(this.grafo.bordas());
+            const o = this.sortearEntrada();
             const cam = this.grafo.caminhoDestino(o, H, H.prox, this.custoEstatico);
             if (!cam) continue;
             const v = this.adicionar('AMB', cam, o);
@@ -483,9 +526,11 @@ export default class JogoScene extends Phaser.Scene {
         }
     }
 
+    // novo carro elétrico: entra por uma borda sorteada e fica à espera que o jogador escolha o posto.
+    // A bateria inicial é sorteada, mas garante que o posto mais próximo é alcançável (jogo justo).
     gerarEV() {
         for (let k = 0; k < 4; k++) {
-            const o = Phaser.Math.RND.pick(this.grafo.bordas());
+            const o = this.sortearEntrada();
             const r = this.grafo.rota(o, this.oposto(o), this.custoEstatico);
             if (!r) continue;
             const cam = this.grafo.caminho(r.ids);
@@ -497,7 +542,8 @@ export default class JogoScene extends Phaser.Scene {
             v.bateria = Phaser.Math.Between(22, 40);
             // jogo justo: o posto mais próximo tem de ser alcançável com a bateria que o carro tem
             const tMin = Math.min(...this.postos.map(p => this.tempoAte(v, p)));
-            v.bateria = Math.min(60, Math.max(v.bateria, Math.ceil(tMin * CONSUMO_BATERIA + 15)));
+            // a bateria já gasta enquanto se escolhe o posto: margem para ~8 s de decisão + a viagem mais curta
+            v.bateria = Math.min(65, Math.max(v.bateria, Math.ceil((tMin + 8) * CONSUMO_BATERIA + 12)));
             v.estado = 'ESCOLHA';
             v.escolhaT = 0;
             v.idx = 2;
@@ -515,13 +561,16 @@ export default class JogoScene extends Phaser.Scene {
     // ------------------------------------------------------------ DSS: postos (pontuação multicritério)
     evEmEscolha() { return this.lista.find(v => v.tipo === 'EV' && v.estado === 'ESCOLHA'); }
 
+    // tempo (s de jogo) da rota mais curta do elétrico até ao posto
     tempoAte(ev, posto) {
         const c = this.grafo.caminhoDestino(ev.entrada, posto.dest, posto.dest.prox, this.custoEstatico);
         return c ? c.tempo : 999;
     }
 
+    // pontuação multicritério dos postos para este elétrico (ver MotorDSS.classificarPostos)
     classificar(ev) { return MotorDSS.classificarPostos(ev, this.postos, (p) => this.tempoAte(ev, p)); }
 
+    // pré-visualiza a rota até um posto (clique no cartão, na etiqueta do mapa ou teclas 1-4)
     verPosto(p) {
         if (!this.evEmEscolha() || this.pausado) return;
         this.previa = p;
@@ -530,8 +579,10 @@ export default class JogoScene extends Phaser.Scene {
         this.desenharRotas();
     }
 
+    // botão CONFIRMAR (ou Espaço): envia o elétrico para o posto pré-visualizado
     confirmarPosto() { if (this.previa && this.evEmEscolha()) this.escolherPosto(this.previa); }
 
+    // atualiza os cartões dos postos: info geral, ou (com um elétrico à espera) viagem, carga, custo e ★
     atualizarPostos() {
         const ev = this.evEmEscolha();
         const f = (n) => Math.round(n);
@@ -565,6 +616,7 @@ export default class JogoScene extends Phaser.Scene {
         this.postos.forEach(p => this.marcas[p.id].setAlpha(this.previa === p ? 1 : 0.8).setScale(this.previa === p ? 1.15 : 1));
     }
 
+    // envia o elétrico para o posto; auto = true quando o tempo de escolha acabou
     escolherPosto(posto, auto = false) {
         const ev = this.evEmEscolha();
         if (!ev || this.pausado) return;
@@ -622,11 +674,13 @@ export default class JogoScene extends Phaser.Scene {
         });
     }
 
+    // chamado quando um carro normal sai do mapa (+2 pontos)
     aoSair(v) {
         if (v.tipo === 'NORMAL') this.pontos += 2;
         this.remover(v);
     }
 
+    // retira o veículo do jogo
     remover(v) {
         const i = this.lista.indexOf(v);
         if (i >= 0) this.lista.splice(i, 1);
@@ -634,6 +688,7 @@ export default class JogoScene extends Phaser.Scene {
         v.destroy();
     }
 
+    // tira 'seg' segundos ao relógio e mostra o motivo
     penalizar(seg, motivo) {
         this.tempo -= seg;
         this.cameras.main.shake(200, 0.006);
@@ -641,6 +696,7 @@ export default class JogoScene extends Phaser.Scene {
         this.toast(`${motivo}  −${seg} s`, '#ffb3a8');
     }
 
+    // o relógio chegou a 0: mostra "Acabou o tempo!" e vai para o ecrã de resultados
     fimDeJogo() {
         this.pausado = true;
         Som.pararTudo();
@@ -648,6 +704,7 @@ export default class JogoScene extends Phaser.Scene {
         this.time.delayedCall(1800, () => this.scene.start('GameOverScene', { pontos: this.pontos, nivel: this.nivel, estat: this.estat, vitoria: false }));
     }
 
+    // objetivos cumpridos? dá o bónus e passa ao nível seguinte (ou ao ecrã final)
     verificarNivel() {
         const o = this.cfg.objetivos;
         if (this.pausado || this.feitos.amb < o.amb || this.feitos.ev < o.ev) return;
@@ -665,6 +722,7 @@ export default class JogoScene extends Phaser.Scene {
         });
     }
 
+    // cartão central com título e texto (introdução do nível, fim de nível, fim de jogo)
     sobrepor(t1, t2) {
         const c = this.add.container(MAPA_L / 2, ALTURA / 2).setDepth(40);
         c.add([
@@ -675,6 +733,7 @@ export default class JogoScene extends Phaser.Scene {
         return c;
     }
 
+    // cartão de introdução do nível; o jogo começa ao clicar ou ao fim de 6 s
     mostrarIntro() {
         const o = this.cfg.objetivos;
         const c = this.sobrepor(this.cfg.titulo,
@@ -729,8 +788,12 @@ export default class JogoScene extends Phaser.Scene {
         }
     }
 
-    // distância de segurança: trava se houver um veículo à frente na mesma faixa
+    // Distância de segurança: trava se houver um veículo à frente na mesma faixa.
+    // Se dois veículos se bloquearem um ao outro (ficariam parados para sempre), segue o de maior
+    // prioridade: ambulância > elétrico > carro normal (em empate, o que anda há mais tempo).
     distanciaSegura() {
+        const prio = { AMB: 3, EV: 2, NORMAL: 1 };
+        for (const v of this.lista) v.bloqueadoPor = null;
         for (const v of this.lista) {
             if (v.fim) continue;
             const c = Math.cos(v.rotation), sn = Math.sin(v.rotation);
@@ -738,17 +801,28 @@ export default class JogoScene extends Phaser.Scene {
                 if (o === v) continue;
                 const dx = o.x - v.x, dy = o.y - v.y;
                 const frente = dx * c + dy * sn;
-                if (frente <= 0 || frente > 48) continue;
+                if (frente <= 0 || frente > DIST_SEGURANCA) continue;
                 if (Math.abs(-dx * sn + dy * c) > 17) continue;   // largura da faixa ocupada (inclui quem está a sair dela)
                 // carros noutro sentido só contam se estiverem mesmo à frente (ex.: ao virar à esquerda para
                 // um posto, o carro espera que passe quem vem na faixa contrária)
                 if (!o.fim && Math.abs(Phaser.Math.Angle.Wrap(v.rotation - o.rotation)) > 1.0 && frente > 30) continue;
                 v.bloqueado = true;
+                v.bloqueadoPor = o;
                 break;
             }
         }
+        // desfaz bloqueios mútuos
+        for (const v of this.lista) {
+            const o = v.bloqueadoPor;
+            if (!o || o.bloqueadoPor !== v) continue;
+            const ganha = prio[v.tipo] > prio[o.tipo] || (prio[v.tipo] === prio[o.tipo] && v.idade >= o.idade) ? v : o;
+            ganha.bloqueado = false;
+            ganha.bloqueadoPor = null;
+        }
     }
 
+    // ciclo principal (cada frame): relógio, semáforos, travagem, movimento, geração de veículos,
+    // Assistente, bateria dos elétricos e trânsito parado
     update(tempo, delta) {
         if (this.pausado) return;
         const dt = Math.min(delta, 50) / 1000;
@@ -795,10 +869,10 @@ export default class JogoScene extends Phaser.Scene {
             if (v.tipo !== 'EV' || v.fim) continue;
             if (v.estado === 'ESCOLHA') {
                 v.escolhaT += dt;
-                if (v.escolhaT > ESCOLHA_MAX && this.previa) this.escolherPosto(this.previa, true);
+                if (v.escolhaT > TEMPO_ESCOLHA && this.previa) this.escolherPosto(this.previa, true);
             } else if (v.bateria <= 0) {
                 this.remover(v);
-                this.penalizar(10, 'Elétrico sem bateria!');
+                this.penalizar(PENAL_BATERIA, 'Elétrico sem bateria!');
             }
         }
 
@@ -813,7 +887,7 @@ export default class JogoScene extends Phaser.Scene {
             if (this.congestao >= 100) {
                 this.congestao = 30;
                 [...this.lista].filter(v => v.tipo === 'NORMAL' && v.v < 5).forEach(v => this.remover(v));
-                this.penalizar(8, 'Congestionamento!');
+                this.penalizar(PENAL_CONGESTAO, 'Congestionamento!');
             }
         }
         if (this.congestao > 40 && Phaser.Math.RND.frac() < dt * 0.3) Som.tocar('buzina', 0.35);

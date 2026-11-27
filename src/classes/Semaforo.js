@@ -1,4 +1,4 @@
-import { FONTE } from './Constantes.js';
+import { FONTE, SEMAFORO_AUTO, AREA_TOQUE } from './Constantes.js';
 
 // Cruzamento com 4 semáforos independentes, um por via. Cada um é identificado pelo sentido de marcha
 // de quem chega: 'E' (vem de oeste), 'W' (vem de este), 'S' (vem de norte), 'N' (vem de sul).
@@ -6,6 +6,7 @@ import { FONTE } from './Constantes.js';
 // Visual: a caixa de cada semáforo e a linha de paragem da sua via mostram a cor atual.
 // Se o jogador não intervir, ao fim de 10-15 s todos os semáforos do cruzamento invertem.
 export default class Semaforo {
+    // cria o semáforo do cruzamento (x, y) com o nome 'S1'..'S9'; o estado inicial é sorteado
     constructor(scene, nome, x, y) {
         this.scene = scene;
         this.nome = nome;
@@ -14,7 +15,7 @@ export default class Semaforo {
         const h = Phaser.Math.RND.pick([true, false]);       // começa com um eixo verde e o outro vermelho
         this.luz = { E: h, W: h, S: !h, N: !h };              // true = verde
         this.t = 0;
-        this.tempoVerde = Phaser.Math.FloatBetween(10, 15);
+        this.tempoVerde = Phaser.Math.FloatBetween(...SEMAFORO_AUTO);
         this.liberados = new Set();   // carros autorizados a atravessar (reserva do cruzamento)
         this.gfx = scene.add.graphics().setDepth(6);
         this.linhas = scene.add.graphics().setDepth(1);   // linhas de paragem coloridas (por baixo dos carros)
@@ -24,8 +25,8 @@ export default class Semaforo {
         this.cabecas = [[x - 41, y + 41, 'H', 'E'], [x + 41, y - 41, 'H', 'W'], [x - 41, y - 41, 'V', 'S'], [x + 41, y + 41, 'V', 'N']];
         this.hover = null;
         this.zonas = this.cabecas.map(([px, py, , dir]) => {
-            // área de toque (54x54) maior do que o desenho, para ser fácil tocar no telemóvel
-            const z = scene.add.zone(px, py, 54, 54).setInteractive({ useHandCursor: true }).setDepth(8);
+            // área de toque (AREA_TOQUE) maior do que o desenho, para ser fácil tocar no telemóvel
+            const z = scene.add.zone(px, py, AREA_TOQUE, AREA_TOQUE).setInteractive({ useHandCursor: true }).setDepth(8);
             z.on('pointerover', () => { this.hover = dir; this.desenhar(); });
             z.on('pointerout', () => { this.hover = null; this.desenhar(); });
             z.dir = dir;
@@ -37,6 +38,7 @@ export default class Semaforo {
     // fn(dir) é chamada com o sentido do semáforo clicado
     aoClicar(fn) { this.zonas.forEach(z => z.on('pointerdown', () => fn(z.dir))); }
 
+    // true se o semáforo da via 'dir' (E, W, N ou S) estiver verde
     verdeDir(dir) { return this.luz[dir]; }
     // eixo todo verde (os dois semáforos desse eixo)
     verde(eixo) { return eixo === 'H' ? this.luz.E && this.luz.W : this.luz.N && this.luz.S; }
@@ -53,7 +55,7 @@ export default class Semaforo {
         const h = eixo === 'H';
         this.luz = { E: h, W: h, S: !h, N: !h };
         this.t = 0;
-        this.tempoVerde = Phaser.Math.FloatBetween(10, 15);
+        this.tempoVerde = Phaser.Math.FloatBetween(...SEMAFORO_AUTO);
         this.desenhar();
     }
 
@@ -63,7 +65,7 @@ export default class Semaforo {
         if (this.t >= this.tempoVerde) {
             for (const d in this.luz) this.luz[d] = !this.luz[d];
             this.t = 0;
-            this.tempoVerde = Phaser.Math.FloatBetween(10, 15);
+            this.tempoVerde = Phaser.Math.FloatBetween(...SEMAFORO_AUTO);
             this.desenhar();
         }
     }

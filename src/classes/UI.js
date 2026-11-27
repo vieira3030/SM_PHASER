@@ -2,6 +2,8 @@
 import Som from './Som.js';
 import { FONTE, COR, LARGURA, ALTURA, ESCALA } from './Constantes.js';
 
+// Botão arredondado com texto. (x, y) = centro; w, h = tamanho; acao = função chamada ao clicar.
+// opcoes: cor, corHover, txt (cor do texto), fonte (tamanho). Devolve um container com setTexto(novoTexto).
 export function criarBotao(scene, x, y, w, h, texto, aoClicar, opcoes = {}) {
     const cor = opcoes.cor ?? COR.terracota, corHover = opcoes.corHover ?? COR.terracotaEsc, txt = opcoes.txt ?? '#fffdf6';
     const c = scene.add.container(x, y);

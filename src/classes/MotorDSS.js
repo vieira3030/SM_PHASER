@@ -107,6 +107,7 @@ export default class MotorDSS {
     }
 }
 
+// junta uma sugestão candidata (pontuação, prioridade, motivo e, se houver, a via da ambulância)
 function adicionar(arr, score, prioridade, motivo, dir = null) {
     arr.push({ score, prioridade, motivo, dir });
 }

@@ -1,11 +1,14 @@
 // Sons e música (ficheiros em assets/audio, carregados no PreloadScene). Volumes guardados em localStorage.
 const CHAVE = 'stc_opcoes';
 
+// Som do jogo (música, ambiente e efeitos). Os ficheiros estão em assets/audio (carregados no PreloadScene).
+// Volumes por omissão: Som.vol = { m: música, e: efeitos } (0 a 1), guardados no browser.
 export default class Som {
     static vol = { m: 0.6, e: 0.8 };
     static jogo = null;
     static loops = {};
 
+    // guarda a referência ao jogo e lê os volumes guardados (chamado uma vez no PreloadScene)
     static iniciar(jogo) {
         Som.jogo = jogo;
         try {
@@ -15,6 +18,7 @@ export default class Som {
         } catch (e) { /* sem armazenamento */ }
     }
 
+    // guarda os volumes no browser (localStorage)
     static guardar() {
         try { localStorage.setItem(CHAVE, JSON.stringify(Som.vol)); } catch (e) { /* ignora */ }
         Object.values(Som.loops).forEach(l => l.s.setVolume(l.v * Som.vol[l.canal]));
@@ -37,6 +41,8 @@ export default class Som {
         if (!l.s.isPlaying) l.s.play();
     }
 
+    // para um som em ciclo (ex.: 'sirene')
     static parar(chave) { const l = Som.loops[chave]; if (l && l.s.isPlaying) l.s.stop(); }
+    // para todos os sons em ciclo (usado ao mudar de cena)
     static pararTudo() { Object.keys(Som.loops).forEach(k => Som.parar(k)); }
 }

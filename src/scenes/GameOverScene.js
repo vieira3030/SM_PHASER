@@ -5,9 +5,12 @@ import Som from '../classes/Som.js';
 
 // Resultados finais (vitória ou derrota): estatísticas do jogo e top 5 de pontuações com nome.
 export default class GameOverScene extends Phaser.Scene {
+    // nome da cena usado em this.scene.start('GameOverScene')
     constructor() { super('GameOverScene'); }
+    // d = { pontos, nivel, estat, vitoria } enviado pela cena de jogo
     init(d) { this.d = d || {}; }
 
+    // monta o ecrã: estatísticas à esquerda, top 5 à direita, botões em baixo
     create() {
         camaraHD(this);
         const d = this.d, e = d.estat || {};
@@ -49,6 +52,7 @@ export default class GameOverScene extends Phaser.Scene {
         criarBotao(this, LARGURA / 2 + 105, 418, 190, 40, 'MENU', () => this.scene.start('MenuScene'), { cor: COR.papelEscuro, corHover: 0x4a5260, fonte: '15px' });
     }
 
+    // escreve o top 5; 'destaque' = posição a realçar (a pontuação acabada de guardar), -1 = nenhuma
     mostrarTop(destaque) {
         const l = Ranking.lista();
         this.linhasTop.forEach((t, i) => {

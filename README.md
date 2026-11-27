@@ -29,6 +29,9 @@ Os mapas (assets/img/mapa1-3.png) e a geometria do hospital e dos postos (assets
 - **Dijkstra (caminho mais curto)** (`Grafo.rota`, `Grafo.caminhoDestino`): cada veículo segue a rota mais curta; para entrar num destino o jogo compara a entrada pelos dois sentidos da rua e escolhe a mais curta.
 - Aleatoriedade controlada: intervalos de geração sorteados dentro de limites por nível; ocupação dos postos sorteada; bateria ajustada para o jogo ser justo.
 
+## Onde mudar o quê
+O topo de `src/classes/Constantes.js` tem um guia com todos os valores fáceis de alterar: velocidade e tamanho dos veículos, aceleração e travagem, distância de segurança, tempo automático dos semáforos, gasto de bateria, penalizações, etc. Os níveis (objetivos, trânsito, bónus de tempo) estão em `src/classes/GestorNiveis.js` e os postos (nome, kW, preço) em `src/classes/Dados.js`. Todas as classes, funções e métodos têm um comentário a explicar o que fazem.
+
 ## Estrutura
 - `src/scenes/` — Preload, Menu, Instruções, Jogo, GameOver
 - `src/classes/` — Constantes, Dados, Grafo, MotorDSS, Semaforo, Veiculo, GestorNiveis, Som, UI

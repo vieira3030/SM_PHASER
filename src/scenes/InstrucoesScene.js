@@ -1,9 +1,12 @@
 import { LARGURA, ALTURA, FONTE, COR } from '../classes/Constantes.js';
 import { criarBotao, cartao, camaraHD } from '../classes/UI.js';
 
+// Ecrã "Como jogar": 4 passos, bloco de teclado e botões Voltar / Jogar.
 export default class InstrucoesScene extends Phaser.Scene {
+    // nome da cena usado em this.scene.start('InstrucoesScene')
     constructor() { super('InstrucoesScene'); }
 
+    // para mudar os textos das instruções, alterar o array 'itens' e o array 'teclas'
     create() {
         camaraHD(this);
         this.add.image(LARGURA / 2, ALTURA / 2, 'mapa2').setScale(LARGURA / 1200);

@@ -2,9 +2,12 @@ import { LARGURA, ALTURA, FONTE, COR } from '../classes/Constantes.js';
 import { criarBotao, cartao, camaraHD } from '../classes/UI.js';
 import Som from '../classes/Som.js';
 
+// Menu principal: título, botões Jogar / Como jogar, volumes e recorde. Enter também começa o jogo.
 export default class MenuScene extends Phaser.Scene {
+    // nome da cena usado em this.scene.start('MenuScene')
     constructor() { super('MenuScene'); }
 
+    // fundo (mapa escurecido com carros a passar), cartão central e botões
     create() {
         camaraHD(this);
         Som.pararTudo();

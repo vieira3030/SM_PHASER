@@ -6,8 +6,10 @@ const SONS = ['semaforo', 'botao', 'aceitar', 'ignorar', 'sucesso', 'erro', 'niv
 
 // Carrega todos os recursos (imagens e sons da pasta assets) com barra de progresso.
 export default class PreloadScene extends Phaser.Scene {
+    // nome da cena usado em this.scene.start('PreloadScene')
     constructor() { super('PreloadScene'); }
 
+    // carrega todas as imagens, sons e o ficheiro de níveis, com barra de progresso
     preload() {
         camaraHD(this);
         this.add.rectangle(LARGURA / 2, ALTURA / 2, LARGURA, ALTURA, 0x2b2d42);
@@ -24,6 +26,7 @@ export default class PreloadScene extends Phaser.Scene {
                 SONS.forEach(s => this.load.audio(s, [`audio/${s}.ogg`, `audio/${s}.mp3`]));
     }
 
+    // cria a animação da sirene e passa para o menu
     create() {
         Som.iniciar(this.game);
         // animação da sirene da ambulância (spritesheet com 2 frames)

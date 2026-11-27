@@ -24,8 +24,11 @@ export default class Grafo {
         });
     }
 
+    // acrescenta um nó (cruzamento 'I' ou borda 'B') nas coordenadas x, y
     addNo(id, x, y, tipo) { this.nos[id] = { id, x, y, tipo }; this.adj[id] = []; }
+    // liga dois nós por uma rua com dois sentidos
     ligar(a, b) { this.adj[a].push(b); this.adj[b].push(a); }
+    // ids das entradas/saídas do mapa (W0, E0, N1, S2, ...)
     bordas() { return Object.values(this.nos).filter(n => n.tipo === 'B').map(n => n.id); }
 
     // direção de movimento ao ir do nó a para o nó b

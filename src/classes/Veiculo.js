@@ -1,9 +1,10 @@
-import { VETOR, VEL_NORMAL, VEL_AMB, VEL_EV, CONSUMO_BATERIA } from './Constantes.js';
+import { VETOR, VEL_NORMAL, VEL_AMB, VEL_EV, CONSUMO_BATERIA, ACELERACAO, TRAVAGEM, VEL_ROTACAO, ESCALA_VEICULO } from './Constantes.js';
 
 // Frames da spritesheet 'carros' (72x36): 0-15 = 8 modelos de carro (normal, a travar), 16-17 = ambulância (sirene),
 // 18-19 = carro elétrico (normal, a travar).
 const FRAME = { AMB: 16, EV: 18 };
 
+// roda o ângulo 'a' em direção a 'alvo' no máximo 'passo' radianos (curvas suaves)
 function girar(a, alvo, passo) {
     let d = Phaser.Math.Angle.Wrap(alvo - a);
     if (Math.abs(d) <= passo) return alvo;
@@ -13,6 +14,7 @@ function girar(a, alvo, passo) {
 // Veículo (carro normal, ambulância ou carro elétrico). Segue uma lista de waypoints com curvas suaves.
 // Usa Arcade Physics: sensores à frente (travagem) e zonas de paragem nos semáforos.
 export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
+    // tipo: 'NORMAL' | 'AMB' | 'EV'; caminho = { pontos, idxMeta, ids, nodoIdx } calculado pelo Grafo
     constructor(scene, tipo, caminho) {
         const p0 = caminho.pontos[0];
         const variante = Phaser.Math.Between(0, 7);
@@ -37,13 +39,13 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         this.travar = false;
         this.v = 0;
         this.velBase = tipo === 'AMB' ? VEL_AMB : tipo === 'EV' ? VEL_EV : Phaser.Math.Between(...VEL_NORMAL);
-        this.setScale(0.5);
+        this.setScale(ESCALA_VEICULO);                 // tamanho do veículo: ver Constantes.js
         this.body.setSize(32, 32);
         this.body.setOffset(20, 2);
         this.setDepth(tipo === 'NORMAL' ? 3 : 4);
         this.fim = false;                 // estacionado no destino
         this.sombra = scene.add.image(p0.x, p0.y, 'carros', tipo === 'AMB' ? FRAME.AMB : tipo === 'EV' ? FRAME.EV : variante * 2)
-            .setTint(0x000000).setAlpha(0.28).setScale(0.5).setDepth(2.9);
+            .setTint(0x000000).setAlpha(0.28).setScale(ESCALA_VEICULO).setDepth(2.9);
         if (tipo === 'AMB') this.play('anim_amb');
         // sensor à frente do veículo (corpo físico) para detetar veículos na mesma faixa
         this.sensor = scene.add.zone(p0.x, p0.y, 14, 14);
@@ -56,6 +58,7 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         if (tipo === 'EV') { this.bateria = 0; this.eficiencia = 0; this.entrada = null; }
     }
 
+    // ângulo (rad) do veículo para o próximo ponto da rota
     anguloAlvo() {
         const p = this.pontos[this.idx];
         return Math.atan2(p.y - this.y, p.x - this.x);
@@ -68,6 +71,7 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         this.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
     }
 
+    // coloca o sensor físico à frente do veículo (40 px no sentido em que está virado)
     atualizarSensor() {
         this.sensor.setPosition(this.x + Math.cos(this.rotation) * 40, this.y + Math.sin(this.rotation) * 40);
         this.sensor.body.updateFromGameObject();
@@ -85,7 +89,7 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         const parado = this.parar || this.bloqueado || aguardar;
         // vMax: limite imposto pelo semáforo seguinte (travagem progressiva até à linha de paragem)
         const alvo = parado ? 0 : Math.min(this.velBase, this.vMax ?? Infinity);
-        const acel = alvo > this.v ? 110 : 700;
+        const acel = alvo > this.v ? ACELERACAO : TRAVAGEM;
         this.v = this.v < alvo ? Math.min(this.v + acel * dt, alvo) : Math.max(this.v - acel * dt, alvo);
         this.vMax = Infinity;
         this.parar = false;
@@ -100,8 +104,9 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         }
         if (this.v < 4) this.espera += dt; else this.espera = 0;
 
-        if (this.tipo === 'EV' && this.estado === 'ANDAR' && !this.metaFeita) {
-            this.bateria = Math.max(0, this.bateria - CONSUMO_BATERIA * dt * (this.v > 4 ? 1 : 0.4));
+        // o carro elétrico gasta bateria desde que aparece (também enquanto o jogador escolhe o posto)
+        if (this.tipo === 'EV' && !this.metaFeita) {
+            this.bateria = Math.max(0, this.bateria - CONSUMO_BATERIA * dt);
         }
 
         let p = this.pontos[this.idx];
@@ -115,7 +120,7 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
             dx = p.x - this.x; dy = p.y - this.y; dist = Math.hypot(dx, dy) || 1;
             this.definirDirecao();
         }
-        if (this.v > 1) this.rotation = girar(this.rotation, Math.atan2(dy, dx), 7 * dt);
+        if (this.v > 1) this.rotation = girar(this.rotation, Math.atan2(dy, dx), VEL_ROTACAO * dt);
         // movimento controlado pelo jogo (passo limitado): a física Arcade só deteta sobreposições,
         // assim um frame mais lento nunca faz o carro "saltar" a linha de paragem
         this.body.setVelocity(0, 0);
@@ -141,6 +146,7 @@ export default class Veiculo extends Phaser.Physics.Arcade.Sprite {
         this.definirDirecao();
     }
 
+    // remove o veículo e os objetos associados (sombra, etiqueta, sensor)
     destroy(fromScene) {
         if (this.sombra) { this.sombra.destroy(); this.sombra = null; }
         if (this.rotulo) { this.rotulo.destroy(); this.rotulo = null; }

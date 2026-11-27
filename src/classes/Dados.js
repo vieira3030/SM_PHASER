@@ -4,6 +4,7 @@ import { BATERIA_KWH, CARGA_ATE, MAX_AC, MAX_DC } from './Constantes.js';
 // baseados em valores típicos atuais da rede pública portuguesa (carregamento sem contrato, "ad hoc"),
 // e servem apenas para o jogo. Não consultam nenhuma API.
 // A posição de cada posto em cada nível está em assets/data/niveis.json.
+// Campos: id (letra no mapa), nome, curto (etiqueta no mapa), kW (potência), tipo (AC/DC), preco (€/kWh).
 export const POSTOS = [
     { id: 'A', nome: 'ESE-IPVC', curto: 'ESE-IPVC', detalhe: 'Escola Superior de Educação', kW: 22, tipo: 'AC', preco: 0.30 },
     { id: 'B', nome: 'Continente', curto: 'Continente', detalhe: 'Continente Viana do Castelo', kW: 50, tipo: 'DC', preco: 0.32 },
@@ -23,5 +24,6 @@ export function sortearOcupacao(postos) {
     postos.forEach(p => { p.ocupacao = Math.round(Phaser.Math.FloatBetween(0, 0.7) * 100) / 100; p.espera = Math.round(p.ocupacao * 12); });
 }
 
+// formata um valor em euros à portuguesa (ex.: 7,59 €)
 export const euros = (v) => v.toFixed(2).replace('.', ',') + ' €';
 

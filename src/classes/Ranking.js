@@ -2,6 +2,7 @@
 const CHAVE = 'stc_top5';
 
 export default class Ranking {
+    // lista atual do top 5 (array de { nome, pontos, nivel }), lida do localStorage
     static lista() {
         try { return JSON.parse(localStorage.getItem(CHAVE) || '[]'); } catch (e) { return []; }
     }
