@@ -30,3 +30,25 @@ const config = {
 };
 
 window.jogo = new Phaser.Game(config);
+
+// ---------------- Ecrã inteiro ----------------
+// alterna entre ecrã inteiro e janela (botões "Ecrã inteiro" e tecla F). No telemóvel tenta também
+// fixar a orientação na horizontal (só funciona em ecrã inteiro e em browsers que o suportem).
+export function alternarEcraInteiro() {
+    const sc = window.jogo.scale;
+    if (sc.isFullscreen) { sc.stopFullscreen(); return; }
+    sc.startFullscreen();
+    try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* não suportado */ }
+}
+window.alternarEcraInteiro = alternarEcraInteiro;
+
+// No telemóvel (ecrã tátil), o primeiro toque põe o jogo em ecrã inteiro (esconde a barra do browser).
+// Tem de ser dentro de um toque do utilizador: os browsers não deixam fazê-lo automaticamente.
+const tatil = window.matchMedia('(pointer: coarse)').matches;
+window.addEventListener('pointerup', () => {
+    if (tatil && !window.jogo.scale.isFullscreen) alternarEcraInteiro();
+});
+// tecla F: ecrã inteiro em qualquer dispositivo
+window.addEventListener('keydown', (ev) => {
+    if (ev.key === 'f' || ev.key === 'F') { if (document.activeElement && document.activeElement.tagName === 'INPUT') return; alternarEcraInteiro(); }
+});

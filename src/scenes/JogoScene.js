@@ -143,7 +143,8 @@ export default class JogoScene extends Phaser.Scene {
             ['1 – 4', 'escolher o posto de carregamento'],
             ['Espaço', 'confirmar o posto'],
             ['P / Esc', 'pausa / continuar'],
-            ['R  ·  M', 'reiniciar o nível  ·  menu (em pausa)']
+            ['R  ·  M', 'reiniciar o nível  ·  menu (em pausa)'],
+            ['F', 'ecrã inteiro']
         ];
         comandos.forEach(([tecla, acao], i) => {
             const y = -96 + i * 24;
@@ -155,6 +156,8 @@ export default class JogoScene extends Phaser.Scene {
             ['REINICIAR NÍVEL', () => this.sairPausa('reiniciar'), { cor: COR.papelEscuro, corHover: 0x4a5260 }],
             ['MENU PRINCIPAL', () => this.sairPausa('menu'), { cor: COR.papelEscuro, corHover: 0x4a5260 }]
         ];
+        // botão de ecrã inteiro no canto do cartão
+        c.add(criarBotao(this, 196, -158, 80, 26, '⛶ ECRÃ', () => window.alternarEcraInteiro(), { cor: COR.papelEscuro, corHover: 0x4a5260, fonte: '11px' }));
         bot.forEach(([t, fn, op], i) => c.add(criarBotao(this, -156 + i * 156, 148, 146, 36, t, fn, { ...op, fonte: '13px' })));
         return c;
     }

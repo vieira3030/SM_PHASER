@@ -45,6 +45,9 @@ export default class MenuScene extends Phaser.Scene {
 
         let recorde = 0;
         try { recorde = Number(localStorage.getItem('stc_recorde') || 0); } catch (e) { /* ignora */ }
+        // ecrã inteiro (também com a tecla F; no telemóvel liga-se sozinho ao primeiro toque)
+        criarBotao(this, LARGURA / 2, 408, 200, 28, '⛶  ECRÃ INTEIRO (F)', () => window.alternarEcraInteiro(),
+            { cor: 0x2d333e, corHover: 0x4a5260, txt: COR.tintaTxt, fonte: '12px' }).setDepth(5);
         this.add.text(LARGURA / 2, 366, `Recorde: ${recorde} pontos`, { fontFamily: FONTE, fontSize: '12px', color: COR.cinzaTxt }).setOrigin(0.5);
         this.add.text(LARGURA / 2, 462, 'Sistemas Multimédia 2026/27 · Universidade Politécnica de Viana do Castelo', { fontFamily: FONTE, fontSize: '11px', color: '#e8e6df', backgroundColor: '#12151bcc', padding: { x: 8, y: 3 } }).setOrigin(0.5).setDepth(5);
         this.children.each(c => { if (c.depth === 0) c.setDepth(5); });
